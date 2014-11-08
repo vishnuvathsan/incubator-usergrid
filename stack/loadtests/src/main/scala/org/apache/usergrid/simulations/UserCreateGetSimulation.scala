@@ -41,7 +41,7 @@ class UserCreateGetSimulation extends Simulation {
   val createScenario = scenario("Create and Get users")
 
     //get our management token, then feed forever
-      .exec(TokenScenarios.getManagementToken)
+//      .exec(TokenScenarios.getManagementToken)
       .feed(userFeeder)
       //create the user
       .exec(UserScenarios.postUser)

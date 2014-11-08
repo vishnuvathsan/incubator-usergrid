@@ -34,7 +34,7 @@ import io.gatling.core.Predef._
    val getUserByUsername = exec(
      http("GET user")
        .get("/users/${username}")
-       .headers(Headers.jsonAuthorized)
+       .headers(Headers.jsonAnonymous)
        .check(status.is(200), jsonPath("$..entities[0].uuid").saveAs("userId"))
    )
 
