@@ -80,22 +80,23 @@ object NotificationScenarios {
      */
 
     //not sure we want to do this, but the feeder runs out otherwise. It doe
+    .exec(TokenScenarios.getManagementToken)
     .feed(userFeeder)
     //create the user
     .exec(UserScenarios.postUser)
-    .exec(TokenScenarios.getUserToken)
+//    .exec(TokenScenarios.getUserToken)
     .exec( UserScenarios.getUserByUsername)
-    .repeat(2){
-    feed(FeederGenerator.generateEntityNameFeeder("device", Settings.numDevices))
-      .exec( DeviceScenarios.postDeviceWithNotifier)
-      .exec(ConnectionScenarios.postUserToDeviceConnection)
-  }
-    .exec(session => {
-    // print the Session for debugging, don't do that on real Simulations
-    println(session)
-    session
-  })
-    exec( sendNotificationToUser)
+//    .repeat(2){
+//    feed(FeederGenerator.generateEntityNameFeeder("device", Settings.numDevices))
+//      .exec( DeviceScenarios.postDeviceWithNotifier)
+//      .exec(ConnectionScenarios.postUserToDeviceConnection)
+//  }
+//    .exec(session => {
+//    // print the Session for debugging, don't do that on real Simulations
+//    println(session)
+//    session
+//  })
+//    exec( sendNotificationToUser)
 
   /**
    * TODO: Add posting to users, which would expect a user in the session
