@@ -39,7 +39,7 @@ import io.gatling.http.Predef._
 
   val updateGeolocation = exec(
     http("PUT user location")
-      .put("/users/user" + Utils.generateRandomInt(1, Settings.numUsers))
+      .put("/users/user" + Utils.generateRandomInt(1, Settings.maxPossibleUsers))
       .body(StringBody("{\"location\":{\"latitude\":\"${latitude}\",\"longitude\":\"${longitude}\"}}"))
       .headers(Headers.jsonAuthorized)
       .check(status.is(200))

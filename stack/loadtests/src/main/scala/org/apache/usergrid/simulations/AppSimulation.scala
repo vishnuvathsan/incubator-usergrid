@@ -41,8 +41,10 @@ class AppSimulation extends Simulation {
 
   setUp(
     NotificationScenarios.createScenario
-      .inject(constantUsersPerSec(Settings.constantUsers) during (Settings.duration)) // wait for 15 seconds so create org can finish, need to figure out coordination
-      .throttle(reachRps(Settings.throttle) in (Settings.rampTime.seconds))
+      //inject all our users over the ramp time
+      .inject(constantUsersPerSec(Settings.maxPossibleUsers) during (Settings.rampTime))
+      //during the ramp time, try to hit our max TPS.  Then hold it for the duration of the test
+      .throttle(reachRps(Settings.throttle) in (Settings.rampTime.seconds), holdFor(Settings.duration))
       .protocols(Settings.httpConf.acceptHeader("application/json"))
   )
 }

@@ -29,7 +29,7 @@ class PostUsersSimulation extends Simulation {
   val httpConf = Settings.httpConf
 
   // Simulation settings
-  val numUsers:Int = Settings.numUsers
+  val numUsers:Int = Settings.maxPossibleUsers
   val rampTime:Int = Settings.rampTime
   val throttle:Int = Settings.throttle
 

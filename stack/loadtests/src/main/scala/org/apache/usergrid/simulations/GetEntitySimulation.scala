@@ -29,7 +29,7 @@ class GetEntitySimulation extends Simulation {
   val httpConf = Settings.httpConf
 
   // Simulation settings
-  val numUsers:Int = Settings.numUsers
+  val numUsers:Int = Settings.maxPossibleUsers
   val numEntities:Int = Settings.numEntities
   val rampTime:Int = Settings.rampTime
   val throttle:Int = Settings.throttle

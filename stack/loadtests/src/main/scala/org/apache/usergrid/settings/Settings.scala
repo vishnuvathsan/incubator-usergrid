@@ -36,9 +36,8 @@ object Settings {
   val duration:Int = Integer.getInteger("duration", 300).toInt // in seconds
 
   // Simulation settings
-  val constantUsers:Int = Integer.getInteger("rampUsers", 10).toInt
+  val maxPossibleUsers:Int = Integer.getInteger("maxPossibleUsers", 10).toInt
 
-  var numUsers:Int = constantUsers * duration
 
   val numEntities:Int = Integer.getInteger("numEntities", 5000).toInt
   val numDevices:Int = Integer.getInteger("numDevices", 4000).toInt
@@ -56,10 +55,10 @@ object Settings {
   val pushNotifier = if (System.getProperty("pushNotifier") != null)  System.getProperty("pushNotifier") else "loadNotifier"
   val pushProvider =  if (System.getProperty("pushProvider") != null)  System.getProperty("pushProvider")  else "noop"
 
-  println(s"Will inject $constantUsers users per sec")
+  println(s"Will inject $maxPossibleUsers over $rampTime seconds at $maxPossibleUsers/$rampTime users per sec")
 
   def getUserFeeder():Array[Map[String, String]]= {
-    val userFeeder = FeederGenerator.generateUserWithGeolocationFeeder(numUsers, userLocationRadius, centerLatitude, centerLongitude)
+    val userFeeder = FeederGenerator.generateUserWithGeolocationFeeder(maxPossibleUsers, userLocationRadius, centerLatitude, centerLongitude)
     return userFeeder
   }
 
