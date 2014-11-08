@@ -57,10 +57,15 @@ object Settings {
 
   println(s"Will inject $maxPossibleUsers over $rampTime seconds at $maxPossibleUsers/$rampTime users per sec")
 
-  def getUserFeeder():Array[Map[String, String]]= {
-    val userFeeder = FeederGenerator.generateUserWithGeolocationFeeder(maxPossibleUsers, userLocationRadius, centerLatitude, centerLongitude)
-    return userFeeder
-  }
+//  def getUserFeeder():Array[Map[String, String]]= {
+//    val userFeeder = FeederGenerator.generateUserWithGeolocationFeeder(maxPossibleUsers, userLocationRadius, centerLatitude, centerLongitude)
+//    return userFeeder
+//  }
+
+  def getUserFeeder():Iterator[Map[String, String]]= {
+     val userFeeder = FeederGenerator.generateUserWithGeolocationFeederInfinite( userLocationRadius, centerLatitude, centerLongitude)
+     return userFeeder
+   }
 
 
 }

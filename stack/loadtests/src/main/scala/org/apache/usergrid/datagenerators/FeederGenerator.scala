@@ -17,6 +17,7 @@
  package org.apache.usergrid.datagenerators
 
  import java.util.UUID
+ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
  import io.gatling.core.Predef._
  import org.apache.usergrid.settings.Utils
@@ -27,7 +28,7 @@ object FeederGenerator {
   def generateUserWithGeolocationFeeder(numUsers: Int, radius: Double, centerLatitude: Double, centerLongitude: Double): Array[Map[String, String]] = {
     var userArray: ArrayBuffer[Map[String, String]] = new ArrayBuffer[Map[String, String]]
     for (userCount <- 1 to numUsers) {
-      var user: Map[String, String] = EntityDataGenerator.generateUser(userCount)
+      var user: Map[String, String] = EntityDataGenerator.generateUser(userCount.toString)
       var geolocation: Map[String, String] = Utils.generateRandomGeolocation(radius, centerLatitude, centerLongitude)
       var blockLists: Map[String, String] = EntityDataGenerator.generateBlockUserLists(numUsers)
 
@@ -37,6 +38,44 @@ object FeederGenerator {
     }
     return userArray.toArray
   }
+
+
+  /**
+   * Generate users forever
+   * @param radius
+   * @param centerLatitude
+   * @param centerLongitude
+   * @return
+   */
+  def generateUserWithGeolocationFeederInfinite(radius: Double, centerLatitude: Double, centerLongitude: Double): Iterator[Map[String, String]] = {
+
+//    val count: AtomicInteger = new AtomicInteger();
+    val userFeeder = Iterator.continually(generateUserData(UUID.randomUUID(), radius, centerLatitude, centerLongitude))
+
+    return userFeeder
+
+
+  }
+
+  /**
+   * Generate user data based on atomically increasing integers
+   * @param radius
+   * @param centerLatitude
+   * @param centerLongitude
+   * @return
+   */
+  def generateUserData(uuid: UUID, radius: Double, centerLatitude: Double, centerLongitude: Double): Map[String, String] = {
+
+
+    var user: Map[String, String] = EntityDataGenerator.generateUser(uuid.toString)
+    var geolocation: Map[String, String] = Utils.generateRandomGeolocation(radius, centerLatitude, centerLongitude)
+    var blockLists: Map[String, String] = EntityDataGenerator.generateBlockUserLists(1)
+
+    user = user ++ geolocation ++ blockLists
+
+    return user
+  }
+
 
   def generateGeolocationFeeder(radius: Double, centerLatitude: Double, centerLongitude: Double): Feeder[String] = {
 

@@ -41,9 +41,9 @@ object EntityDataGenerator {
 
   }
 
-  def generateUser(userId: Int): Map[String,String] = {
+  def generateUser(userId: String): Map[String,String] = {
 
-    return Map("username" -> "user".concat(userId.toString),
+    return Map("username" -> "user".concat(userId),
       "profileId" -> Utils.generateRandomInt(10000, 1000000).toString,
       "displayName" -> Utils.generateRandomInt(10000, 1000000).toString,
       "showAge" -> Utils.generateRandomInt(0, 1).toString,

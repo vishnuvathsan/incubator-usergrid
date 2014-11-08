@@ -79,7 +79,10 @@ object NotificationScenarios {
      *
      */
 
+    //not sure we want to do this, but the feeder runs out otherwise. It doe
     .feed(userFeeder)
+    //create the user
+    .exec(UserScenarios.postUser)
     .exec(TokenScenarios.getUserToken)
     .exec( UserScenarios.getUserByUsername)
     .repeat(2){
@@ -91,9 +94,8 @@ object NotificationScenarios {
     // print the Session for debugging, don't do that on real Simulations
     println(session)
     session
-  }).forever(){
+  })
     exec( sendNotificationToUser)
-  }
 
   /**
    * TODO: Add posting to users, which would expect a user in the session
