@@ -70,6 +70,15 @@ object NotificationScenarios {
 
   val userFeeder = Settings.getUserFeeder
   val createScenario = scenario("Create Push Notification")
+
+    /**
+     * TODO Shawn, do we want to make this circular so it repeats? We're running out of users
+     * before the test finishes http://gatling.io/docs/2.0.2/session/feeder.html?highlight=feeder#recordseqfeederbuilder
+     *
+     * .feed(userFeeder.circular)
+     *
+     */
+
     .feed(userFeeder)
     .exec(TokenScenarios.getUserToken)
     .exec( UserScenarios.getUserByUsername)
@@ -82,8 +91,9 @@ object NotificationScenarios {
     // print the Session for debugging, don't do that on real Simulations
     println(session)
     session
-  })
-    .exec( sendNotificationToUser)
+  }).forever(){
+    exec( sendNotificationToUser)
+  }
 
   /**
    * TODO: Add posting to users, which would expect a user in the session
