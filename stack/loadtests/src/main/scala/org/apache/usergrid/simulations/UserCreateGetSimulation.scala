@@ -42,19 +42,19 @@ class UserCreateGetSimulation extends Simulation {
 
     //get our management token, then feed forever
 //      .exec(TokenScenarios.getManagementToken)
-      .feed(userFeeder)
+    .feed(userFeeder)
       //create the user
       .exec(UserScenarios.postUser)
       .exec( UserScenarios.getUserByUsername)
 
   setUp(
-    createScenario
+    createScenario.inject(constantUsersPerSec(1000000) during (60))
       //inject all our users over the ramp time
-      .inject(constantUsersPerSec(Settings.maxPossibleUsers) during (Settings.rampTime))
+//      .inject(constantUsersPerSec(Settings.maxPossibleUsers) during (Settings.duration))
       //ramp up to our max possible users over the ramp time.  We may not get there if we hit our max tps first
 //      .inject(rampUsers(Settings.maxPossibleUsers) over  (Settings.rampTime))
       //during the ramp time, try to hit our max TPS.  Then hold it for the duration of the test
-      .throttle(reachRps(Settings.throttle) in (Settings.rampTime.seconds), holdFor(Settings.duration))
-      .protocols(Settings.httpConf.acceptHeader("application/json"))
-  )
+
+
+  ).throttle(reachRps(Settings.throttle) in (Settings.rampTime.seconds), holdFor(Settings.duration)).maxDuration(120) .protocols(Settings.httpConf.acceptHeader("application/json"))
 }
