@@ -58,13 +58,17 @@ import org.apache.usergrid.persistence.CredentialsInfo;
 import org.apache.usergrid.persistence.Entity;
 import org.apache.usergrid.persistence.EntityManager;
 import org.apache.usergrid.persistence.EntityManagerFactory;
+import org.apache.usergrid.persistence.EntityNotifier;
 import org.apache.usergrid.persistence.EntityRef;
 import org.apache.usergrid.persistence.Identifier;
 import org.apache.usergrid.persistence.PagingResultsIterator;
 import org.apache.usergrid.persistence.Results;
 import org.apache.usergrid.persistence.Results.Level;
 import org.apache.usergrid.persistence.SimpleEntityRef;
+import org.apache.usergrid.persistence.entities.AppleNotifier;
 import org.apache.usergrid.persistence.entities.Application;
+import org.apache.usergrid.persistence.entities.EnterpriseID;
+import org.apache.usergrid.persistence.entities.GoogleNotifier;
 import org.apache.usergrid.persistence.entities.Group;
 import org.apache.usergrid.persistence.entities.User;
 import org.apache.usergrid.persistence.exceptions.DuplicateUniquePropertyExistsException;
@@ -72,6 +76,8 @@ import org.apache.usergrid.persistence.exceptions.EntityNotFoundException;
 import org.apache.usergrid.security.AuthPrincipalInfo;
 import org.apache.usergrid.security.AuthPrincipalType;
 import org.apache.usergrid.security.crypto.EncryptionService;
+import org.apache.usergrid.security.enterprise.AuthAdapter;
+import org.apache.usergrid.security.enterprise.AuthProvider;
 import org.apache.usergrid.security.oauth.AccessInfo;
 import org.apache.usergrid.security.oauth.ClientCredentialsInfo;
 import org.apache.usergrid.security.salt.SaltProvider;
@@ -88,6 +94,7 @@ import org.apache.usergrid.security.tokens.exceptions.TokenException;
 import org.apache.usergrid.services.ServiceAction;
 import org.apache.usergrid.services.ServiceManager;
 import org.apache.usergrid.services.ServiceManagerFactory;
+import org.apache.usergrid.services.ServicePayload;
 import org.apache.usergrid.services.ServiceRequest;
 import org.apache.usergrid.services.ServiceResults;
 import org.apache.usergrid.utils.ConversionUtils;
@@ -95,6 +102,9 @@ import org.apache.usergrid.utils.JsonUtils;
 import org.apache.usergrid.utils.MailUtils;
 import org.apache.usergrid.utils.StringUtils;
 import org.apache.usergrid.utils.UUIDUtils;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.shiro.UnavailableSecurityManagerException;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -342,6 +352,7 @@ public class ManagementServiceImpl implements ManagementService {
         else {
             System.out.println(
                     "Missing values for superuser account, check properties.  Skipping superuser account setup..." );
+            logger.warn("Missing values for superuser account, check properties.  Skipping superuser account setup...");
         }
     }
 
@@ -2648,24 +2659,48 @@ public class ManagementServiceImpl implements ManagementService {
     @Override
     public User verifyAppUserPasswordCredentials( UUID applicationId, String name, String password ) throws Exception {
 
-        User user = findUserEntity( applicationId, name );
-        if ( user == null ) {
-            return null;
-        }
+        EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(getOrganizationForApplication(applicationId));
+		AuthAdapter adapter = AuthProvider
+				.getAuthAdapterForApplication(applicationId);
+		adapter.setEnterpriseID(enterpriseID);
+		Boolean isAuthenticate = adapter.authenticate(name, password);
+		Boolean iscreateUserNotExist = enterpriseID.getCreateUserNotExist();
 
-        if ( verify( applicationId, user.getUuid(), password ) ) {
-            if ( !user.activated() ) {
-                throw new UnactivatedAppUserException();
+		if (enterpriseID.getEnableLDAP() && isAuthenticate) {
+            
+            User user = findUserEntity( applicationId, name );
+            if ( user == null && iscreateUserNotExist) {
+                user = createUserInstanceFromEnterpriseID(applicationId, name,
+						password);
             }
-            if ( user.disabled() ) {
-                throw new DisabledAppUserException();
+
+            if ( verify( applicationId, user.getUuid(), password ) ) {
+                if ( !user.activated() ) {
+                    throw new UnactivatedAppUserException();
+                }
+                if ( user.disabled() ) {
+                    throw new DisabledAppUserException();
+                }
+                return user;
             }
-            return user;
-        }
+        } else {
+			throw new Exception("LDAP is not enabled.");
+		}
 
         return null;
     }
 
+    private User createUserInstanceFromEnterpriseID(UUID appUuid,
+			String username, String password) throws Exception {
+		ServiceManager serviceManager = smf.getServiceManager(appUuid);
+		ServicePayload servicePayload = new ServicePayload();
+		servicePayload.setProperty("username", username);
+		servicePayload.setProperty("name", username);
+		servicePayload.setProperty("password", password);
+		serviceManager.newRequest(ServiceAction.POST, parameters("users"),
+				servicePayload).execute();
+		return findUserEntity(appUuid, username);
+	}
 
     public String getPasswordResetTokenForAppUser( UUID applicationId, UUID userId ) throws Exception {
         return getTokenForPrincipal( EMAIL, TOKEN_TYPE_PASSWORD_RESET, applicationId, APPLICATION_USER, userId, 0 );
@@ -2907,4 +2942,116 @@ public class ManagementServiceImpl implements ManagementService {
         // TODO Auto-generated method stub
         return null;
     }
+    
+    @Override
+	public Map<String, EntityNotifier> getAllNotifiers(UUID appId) {
+		Map<String, EntityNotifier> notifiers = new HashMap<String, EntityNotifier>();
+		try {
+			EntityManager entityManager = emf.getEntityManager(appId);
+			ServiceManager serviceManager = smf.getServiceManager(appId);
+			ServiceResults serviceResults = serviceManager.newRequest(
+					ServiceAction.GET, parameters("notifiers")).execute();
+			List<Entity> resultEntities = serviceResults.getEntities();
+
+			for (Entity entity : resultEntities) {
+				if (entity.getName().equals("apple")) {
+					notifiers.put(entity.getName(), entityManager.get(
+							entity.getUuid(), AppleNotifier.class));
+				} else if (entity.getName().equals("google")) {
+					notifiers.put(entity.getName(), entityManager.get(
+							entity.getUuid(), GoogleNotifier.class));
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return notifiers;
+	}
+
+	@Override
+	public EntityNotifier getNotifier(UUID appId, String notifierName)
+			throws Exception {
+		Map<String, EntityNotifier> notifiers = getAllNotifiers(appId);
+		if (notifiers.containsKey(notifierName)) {
+			return notifiers.get(notifierName);
+		} else {
+			return null;
+		}
+	}
+
+	@Override
+	public EntityNotifier updateNotifier(UUID appId, String notifierName,
+			ServicePayload servicePayload) throws Exception {
+		ServiceManager serviceManager = smf.getServiceManager(appId);
+
+		serviceManager.newRequest(ServiceAction.PUT,
+				parameters("notifiers", notifierName), servicePayload)
+				.execute();
+
+		return getNotifier(appId, notifierName);
+	}
+
+	@Override
+	public EnterpriseID getEnterpriseIDConfigurationByOrg(
+			OrganizationInfo orgInfo) throws Exception {
+		return getEnterpriseIDConfigurationFromOrg(orgInfo);
+	}
+
+	@Override
+	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
+			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
+			String endpointURL, String userSearchBase, String userIdAttribute)
+			throws Exception {
+
+		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
+
+		EnterpriseID enterpriseID = new EnterpriseID();
+		enterpriseID.setName(orgName);
+		enterpriseID.setType(orgName);
+		enterpriseID.setEnableLDAP(enableLDAP);
+		enterpriseID.setCreateUserNotExist(createUserNotExist);
+		enterpriseID.setEndpointURL(endpointURL);
+		enterpriseID.setUserSearchBase(userSearchBase);
+		enterpriseID.setUserIdAttribute(userIdAttribute);
+
+		EnterpriseID erpPD = em.create(enterpriseID);
+
+		em.addToCollection(
+				new SimpleEntityRef(Group.ENTITY_TYPE, orgInfo.getUuid()),
+				"idms",
+				new SimpleEntityRef(EnterpriseID.ENTITY_TYPE, erpPD.getUuid()));
+
+		return erpPD;
+	}
+
+	public EnterpriseID getEnterpriseIDConfigurationFromOrg(
+			OrganizationInfo organization) throws Exception {
+		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
+		ServiceManager sm = smf.getServiceManager(MANAGEMENT_APPLICATION_ID);
+		ServiceResults serviceResults = sm.newRequest(ServiceAction.GET,
+				parameters("groups", organization.getUuid(), "idms")).execute();
+
+		List<Entity> entities = serviceResults.getEntities();
+		EnterpriseID enterpriseID = null;
+		for (Entity entity : entities) {
+			if (entity.getName().equals(organization.getName())) {
+				enterpriseID = em.get(entity.getUuid(), EnterpriseID.class);
+			}
+		}
+
+		return enterpriseID;
+	}
+
+	@Override
+	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,
+			String username, String password) throws Exception {
+		EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(orgInfo);
+		AuthAdapter authAdapter = AuthProvider
+				.getAuthAdapterForApplication(MANAGEMENT_APPLICATION_ID);
+		authAdapter.setEnterpriseID(enterpriseID);
+
+		return authAdapter.authenticate(username, password);
+	}
 }

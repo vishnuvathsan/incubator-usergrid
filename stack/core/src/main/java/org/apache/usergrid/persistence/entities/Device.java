@@ -20,6 +20,7 @@ package org.apache.usergrid.persistence.entities;
 import java.util.List;
 import java.util.UUID;
 
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -35,6 +36,7 @@ public class Device extends TypedEntity {
 
     public static final String ENTITY_TYPE = "device";
     public static final String RECEIPTS_COLLECTION = "receipts";
+    public static final String PROPERTY_UUID = "uuid";
 
     @EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true,
             basic = true)
@@ -49,6 +51,11 @@ public class Device extends TypedEntity {
     @EntityProperty
     protected Integer badge;
 
+    @EntityProperty
+	protected String platform;
+	
+	@EntityProperty
+    protected String token;
 
     public Device() {
         // id = UUIDUtils.newTimeUUID();
@@ -62,6 +69,7 @@ public class Device extends TypedEntity {
 
     @Override
     @JsonSerialize(include = Inclusion.NON_NULL)
+    @XmlElement(name="name")
     public String getName() {
         return name;
     }
@@ -102,5 +110,25 @@ public class Device extends TypedEntity {
 
     public void setBadge( Integer badge ) {
         this.badge = badge;
+    }
+    
+    @JsonSerialize(include = Inclusion.NON_NULL)
+	@XmlElement(name="platform")
+	public String getPlatform() {
+		return platform;
+	}
+
+	public void setPlatform(String platform) {
+		this.platform = platform;
+	}   
+ 
+    @JsonSerialize(include = Inclusion.NON_NULL)
+    @XmlElement(name="token")
+    public String getToken() {
+        return token;
+    }
+ 
+    public void setToken( String token ) {
+        this.token = token;
     }
 }

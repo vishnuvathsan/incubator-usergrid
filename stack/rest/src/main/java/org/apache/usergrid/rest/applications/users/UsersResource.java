@@ -263,4 +263,18 @@ public class UsersResource extends ServiceResource {
         }
         return new JSONWithPadding( response, callback );
     }
+    
+    @POST
+	@Path("push")
+	public JSONWithPadding sendPushToDevices(@FormParam("message") String message)throws Exception{
+		ApiResponse response;
+		if(message!=null){
+			pushService.sendNotificationByUsers(message,getApplicationId(),null);
+			response = createApiResponse();
+			response.setAction("Send Notifications By UsersNames");			
+			response.setSuccess();
+			return new JSONWithPadding(response);
+		}		
+		return null;
+	}
 }

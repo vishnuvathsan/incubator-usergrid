@@ -25,13 +25,16 @@ import java.util.UUID;
 
 import org.apache.usergrid.persistence.CredentialsInfo;
 import org.apache.usergrid.persistence.Entity;
+import org.apache.usergrid.persistence.EntityNotifier;
 import org.apache.usergrid.persistence.EntityRef;
 import org.apache.usergrid.persistence.Identifier;
 import org.apache.usergrid.persistence.entities.Application;
+import org.apache.usergrid.persistence.entities.EnterpriseID;
 import org.apache.usergrid.persistence.entities.Group;
 import org.apache.usergrid.persistence.entities.User;
 import org.apache.usergrid.security.oauth.AccessInfo;
 import org.apache.usergrid.security.shiro.PrincipalCredentialsToken;
+import org.apache.usergrid.services.ServicePayload;
 import org.apache.usergrid.services.ServiceResults;
 
 import com.google.common.collect.BiMap;
@@ -319,4 +322,27 @@ public interface ManagementService {
 
     /** For testing purposes only */
     public Properties getProperties();
+    
+    /**Get all notifiers from the application */
+	public Map<String, EntityNotifier> getAllNotifiers(UUID appId)throws Exception;
+
+	/**Get specific notifier from the application */
+	public EntityNotifier getNotifier(UUID appId, String notifierName)
+			throws Exception;
+	
+	/**Update notifier details */
+	public EntityNotifier updateNotifier(UUID appId, String notifierName,ServicePayload servicePayload) throws Exception;
+
+    /** Save enterpriseId settings */
+	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
+			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
+			String endpointURL, String userSearchBase, String userName)
+			throws Exception;
+	
+	/** Retrieve enterpriseId settings regarding organization name */
+	public EnterpriseID getEnterpriseIDConfigurationByOrg(
+			OrganizationInfo orgInfo) throws Exception;
+	
+	/** Test LDAP settings. If false means testing fail otherwise its returns true */
+	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,String username,String password)throws Exception;
 }

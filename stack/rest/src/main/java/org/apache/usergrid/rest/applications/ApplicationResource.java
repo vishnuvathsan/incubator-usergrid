@@ -30,6 +30,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -55,6 +56,7 @@ import org.apache.usergrid.persistence.SimpleEntityRef;
 import org.apache.usergrid.persistence.entities.Application;
 import org.apache.usergrid.persistence.entities.User;
 import org.apache.usergrid.rest.AbstractContextResource;
+import org.apache.usergrid.rest.ApiResponse;
 import org.apache.usergrid.rest.applications.assets.AssetsResource;
 import org.apache.usergrid.rest.applications.events.EventsResource;
 import org.apache.usergrid.rest.applications.queues.QueueResource;
@@ -608,4 +610,73 @@ public class ApplicationResource extends ServiceResource {
         }
         return new JSONWithPadding( value, callback );
     }
+    
+    /******************************************************
+	 * 
+	 * Implementation of post method Rest service for push notification.
+	 *****************************************************/
+
+	@POST
+	@Path("push")
+	public JSONWithPadding sendApnsPush(@FormParam("message") String message)
+			throws Exception {
+
+		ApiResponse response = createApiResponse();
+		response.setAction("Sending push");
+
+		pushService.sendNotification(message, applicationId);
+
+		response.setSuccess();
+		return new JSONWithPadding(response);
+	}
+	
+	/*
+	 * Send Notification for all devices in active application which has already registered.
+	 */
+	@POST
+	@Path("*/push")
+	public JSONWithPadding sendNotificationByApp(@FormParam("message") String message)
+			throws Exception {
+
+		ApiResponse response = createApiResponse();
+		response.setAction("Sending push for All");
+
+		pushService.sendNotificationByApp(message, applicationId);
+
+		response.setSuccess();
+		return new JSONWithPadding(response);
+	}
+	
+	/*
+	 * Send Notification for groups which user has initialized.
+	 */
+	@RequireApplicationAccess
+	@Path("groups")
+	public AbstractContextResource getGroupsResource(@Context UriInfo ui)throws Exception{
+		Class cls = Class.forName("org.apache.usergrid.rest.applications.groups.GroupsResource");
+		logger.debug("ApplicationResource.getGroupsResource");
+		addParameter(getServiceParameters(),"groups");
+		PathSegment ps = getFirstPathSegment("groups");
+		if(ps != null){
+			addMatrixParams(getServiceParameters(), ui, ps);
+		}
+		
+		return getSubResource(cls);		
+	}
+	
+	/*
+	 * Send Notification for devices which user has initialized.
+	 */
+	@RequireApplicationAccess
+	@Path("devices")
+	public AbstractContextResource getDevicesResource(@Context UriInfo ui)throws Exception{
+		Class cls = Class.forName("org.apache.usergrid.rest.applications.devices.DevicesResource");
+		logger.debug("ApplicationResource.getDevicesResource");
+		addParameter(getServiceParameters(),"devices");
+		PathSegment ps = getFirstPathSegment("devices");
+		if(ps != null){
+			addMatrixParams(getServiceParameters(), ui, ps);
+		}		
+		return getSubResource(cls);		
+	}
 }

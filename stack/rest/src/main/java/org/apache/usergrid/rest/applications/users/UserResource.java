@@ -295,6 +295,7 @@ public class UserResource extends ServiceResource {
         logger.info( "UserResource.showPasswordResetForm" );
 
         this.token = token;
+        System.out.println(token);
         try {
             if ( management.checkPasswordResetTokenForAppUser( getApplicationId(), getUserUuid(), token ) ) {
                 return handleViewable( "resetpw_set_form", this );
@@ -578,4 +579,19 @@ public class UserResource extends ServiceResource {
 
         return super.addNameParameter( ui, itemName );
     }
+    
+    @POST
+	@Path("push")
+	public JSONWithPadding sendPushToDevices(@PathParam("username") String username,@FormParam("message") String message)throws Exception{	
+		System.out.println("okkk");
+		ApiResponse response;
+		if(message!=null){
+            pushService.sendNotificationByUsername(message,getApplicationId(),user.getUsername());
+			response = createApiResponse();
+			response.setAction("Send Notifications To "+user.getUsername());			
+			response.setSuccess();
+			return new JSONWithPadding(response);
+		}	
+		return null;
+	}
 }

@@ -35,6 +35,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.usergrid.persistence.entities.EnterpriseID;
 import org.apache.usergrid.rest.RootResource;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -43,12 +44,15 @@ import org.apache.usergrid.management.UserInfo;
 import org.apache.usergrid.management.exceptions.ManagementException;
 import org.apache.usergrid.rest.AbstractContextResource;
 import org.apache.usergrid.rest.ApiResponse;
+import org.apache.usergrid.rest.management.users.organizations.config.EnterpriseIDConfiguration;
 import org.apache.usergrid.rest.security.annotations.RequireAdminUserAccess;
 import org.apache.usergrid.rest.security.annotations.RequireOrganizationAccess;
 import org.apache.usergrid.security.shiro.utils.SubjectUtils;
 
 import com.google.common.collect.BiMap;
 import com.sun.jersey.api.json.JSONWithPadding;
+
+import static org.apache.usergrid.rest.exceptions.SecurityException.mappableSecurityException;
 
 
 @Component( "org.apache.usergrid.rest.management.users.organizations.OrganizationsResource" )
@@ -204,5 +208,32 @@ public class OrganizationsResource extends AbstractContextResource {
         response.setData( organization );
 
         return new JSONWithPadding( response, callback );
+    }
+    
+    @RequireAdminUserAccess
+    @Path("{organizationName}/config" )
+    public EnterpriseIDConfiguration getUserByUsername( @Context UriInfo ui,
+            @PathParam( "organizationName" )
+            String organizationName,
+            @QueryParam( "callback" )
+            @DefaultValue( "callback" ) String callback )
+            throws Exception { 
+    	
+    	OrganizationInfo organization = management.getOrganizationByName(organizationName);
+    	
+    	if(organization==null){
+    		throw new ManagementException( "Could not find organization for name: " + organizationName);    		
+    	}
+
+        if ( "me".equals(user.getUsername()) ) {
+            UserInfo user = SubjectUtils.getAdminUser();
+            System.out.println(user.getUsername());
+            if ( ( user != null ) && ( user.getUuid() != null ) ) {
+            	return getSubResource(EnterpriseIDConfiguration.class).init(organization);
+            }
+            throw mappableSecurityException( "unauthorized", "No admin identity for access credentials provided" );
+        }
+
+        return getSubResource(EnterpriseIDConfiguration.class).init(organization);
     }
 }
