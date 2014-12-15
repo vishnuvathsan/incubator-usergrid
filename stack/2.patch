@@ -1,0 +1,842 @@
+From da3ea75541397590052ec1cd5f10b139b3e8a7e1 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Thu, 11 Dec 2014 12:12:45 +0530
+Subject: [PATCH 1/2] modification to push notification and enterpriseID
+
+modification(code addition) of usergrid to integrate push notification
+and enterpriseID of virtusa
+---
+ .../src/main/resources/usergrid-default.properties |  10 +-
+ .../usergrid/persistence/entities/Application.java |  10 ++
+ .../usergrid/persistence/entities/Device.java      |  28 ++++
+ .../usergrid/persistence/entities/Group.java       |  11 ++
+ stack/rest/pom.xml                                 |  18 +++
+ .../usergrid/rest/AbstractContextResource.java     |   3 +
+ .../rest/applications/ApplicationResource.java     |  71 +++++++++
+ .../rest/applications/users/UserResource.java      |  16 ++
+ .../rest/applications/users/UsersResource.java     |  14 ++
+ .../organizations/OrganizationResource.java        |   4 +
+ .../users/organizations/OrganizationsResource.java |  31 ++++
+ .../usergrid/management/ManagementService.java     |  26 ++++
+ .../cassandra/ManagementServiceImpl.java           | 171 +++++++++++++++++++--
+ .../apache/usergrid/services/ServiceRequest.java   |  11 +-
+ .../main/resources/usergrid-services-context.xml   |  12 ++
+ 15 files changed, 417 insertions(+), 19 deletions(-)
+
+diff --git a/stack/config/src/main/resources/usergrid-default.properties b/stack/config/src/main/resources/usergrid-default.properties
+index cc4dda6..1531d5f 100644
+--- a/stack/config/src/main/resources/usergrid-default.properties
++++ b/stack/config/src/main/resources/usergrid-default.properties
+@@ -103,10 +103,10 @@ usergrid.counter.batch.interval=30
+ #usergrid.auth.token.email.expires=0
+ 
+ # SysAdmin login
+-usergrid.sysadmin.login.name=
+-usergrid.sysadmin.login.email=
+-usergrid.sysadmin.login.password=
+-usergrid.sysadmin.login.allowed=false
++usergrid.sysadmin.login.name=admin
++usergrid.sysadmin.login.email=admin@admin.com
++usergrid.sysadmin.login.password=admin
++usergrid.sysadmin.login.allowed=true
+ 
+ usergrid.sysadmin.approve.users=false
+ usergrid.sysadmin.approve.organizations=false
+@@ -116,7 +116,7 @@ usergrid.temp.files=/tmp/usergrid
+ 
+ 
+ #The timeout in locks from reading messages transitionally from a queue.  Number of seconds to wait
+-usergrid.queue.lock.timeout=5
++usergrid.queue.lock.timeout=30
+ 
+ ######
+ #Scheduler setup
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
+index 6dbbdd2..e8f0f26 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
+@@ -120,6 +120,8 @@ public class Application extends TypedEntity {
+     @EntityCollection(type = "notification")
+     protected List<UUID> notifications;
+ 
++    @EntityCollection(type = "EntityNotifier")
++	protected List<UUID> notifiers;
+ 
+     public Application() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -130,6 +132,14 @@ public class Application extends TypedEntity {
+         uuid = id;
+     }
+ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++	public List<UUID> getNotifiers() {
++		return notifiers;
++	}
++
++	public void setNotifiers(List<UUID> notifiers) {
++		this.notifiers = notifiers;
++	}
+ 
+     @Override
+     @JsonSerialize(include = Inclusion.NON_NULL)
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
+index d781bbf..36e26b5 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
+@@ -20,6 +20,7 @@ package org.apache.usergrid.persistence.entities;
+ import java.util.List;
+ import java.util.UUID;
+ 
++import javax.xml.bind.annotation.XmlElement;
+ import javax.xml.bind.annotation.XmlRootElement;
+ 
+ import org.codehaus.jackson.map.annotate.JsonSerialize;
+@@ -35,6 +36,7 @@ public class Device extends TypedEntity {
+ 
+     public static final String ENTITY_TYPE = "device";
+     public static final String RECEIPTS_COLLECTION = "receipts";
++    public static final String PROPERTY_UUID = "uuid";
+ 
+     @EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true,
+             basic = true)
+@@ -49,6 +51,11 @@ public class Device extends TypedEntity {
+     @EntityProperty
+     protected Integer badge;
+ 
++    @EntityProperty
++	protected String platform;
++	
++	@EntityProperty
++    protected String token;
+ 
+     public Device() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -62,6 +69,7 @@ public class Device extends TypedEntity {
+ 
+     @Override
+     @JsonSerialize(include = Inclusion.NON_NULL)
++    @XmlElement(name="name")
+     public String getName() {
+         return name;
+     }
+@@ -103,4 +111,24 @@ public class Device extends TypedEntity {
+     public void setBadge( Integer badge ) {
+         this.badge = badge;
+     }
++    
++    @JsonSerialize(include = Inclusion.NON_NULL)
++	@XmlElement(name="platform")
++	public String getPlatform() {
++		return platform;
++	}
++
++	public void setPlatform(String platform) {
++		this.platform = platform;
++	}   
++ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++    @XmlElement(name="token")
++    public String getToken() {
++        return token;
++    }
++ 
++    public void setToken( String token ) {
++        this.token = token;
++    }
+ }
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
+index 5fd1fba..b73bbfd 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
+@@ -69,6 +69,8 @@ public class Group extends TypedEntity {
+     @EntityCollection(type = "role", linkedCollection = "groups", indexingDynamicDictionaries = true)
+     protected List<UUID> roles;
+ 
++    @EntityCollection(type = "idm", linkedCollection = "groups")
++    protected List<UUID> idms;
+ 
+     public Group() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -79,6 +81,15 @@ public class Group extends TypedEntity {
+         uuid = id;
+     }
+ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++    public List<UUID> getIdms() {
++		return idms;
++	}
++
++
++	public void setIdms(List<UUID> idms) {
++		this.idms = idms;
++	}
+ 
+     @JsonSerialize(include = Inclusion.NON_NULL)
+     public String getPath() {
+diff --git a/stack/rest/pom.xml b/stack/rest/pom.xml
+index 998572e..6357dc1 100644
+--- a/stack/rest/pom.xml
++++ b/stack/rest/pom.xml
+@@ -354,6 +354,24 @@
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-install-plugin</artifactId>
+         <version>2.5.1</version>
++          <executions>
++          <execution>
++            <id>install jar</id>
++            <phase>install</phase>
++            <goals>
++              <goal>install-file</goal>
++            </goals>
++            <configuration>
++              <packaging>jar</packaging>
++              <artifactId>${project.artifactId}</artifactId>
++              <groupId>${project.groupId}</groupId>
++              <version>${project.version}</version>
++              <file>
++                ${project.build.directory}/${project.artifactId}-${project.version}.jar
++              </file>
++            </configuration>
++          </execution>
++        </executions>
+       </plugin>
+     </plugins>
+   </build>
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
+index c415a2c..e289b89 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
+@@ -33,6 +33,7 @@ import org.apache.usergrid.persistence.EntityManagerFactory;
+ import org.apache.usergrid.rest.exceptions.RedirectionException;
+ import org.apache.usergrid.security.tokens.TokenService;
+ import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.push.PushService;
+ 
+ import com.sun.jersey.api.core.HttpContext;
+ import com.sun.jersey.api.core.ResourceContext;
+@@ -89,6 +90,8 @@ public abstract class AbstractContextResource {
+     @Autowired
+     protected TokenService tokens;
+ 
++    @Autowired
++    protected PushService pushService;
+ 
+     public AbstractContextResource() {
+     }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
+index a1c8d11..346de68 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
+@@ -30,6 +30,7 @@ import javax.ws.rs.GET;
+ import javax.ws.rs.HeaderParam;
+ import javax.ws.rs.POST;
+ import javax.ws.rs.Path;
++import javax.ws.rs.PathParam;
+ import javax.ws.rs.Produces;
+ import javax.ws.rs.QueryParam;
+ import javax.ws.rs.core.Context;
+@@ -55,6 +56,7 @@ import org.apache.usergrid.persistence.SimpleEntityRef;
+ import org.apache.usergrid.persistence.entities.Application;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.rest.AbstractContextResource;
++import org.apache.usergrid.rest.ApiResponse;
+ import org.apache.usergrid.rest.applications.assets.AssetsResource;
+ import org.apache.usergrid.rest.applications.events.EventsResource;
+ import org.apache.usergrid.rest.applications.queues.QueueResource;
+@@ -608,4 +610,73 @@ public class ApplicationResource extends ServiceResource {
+         }
+         return new JSONWithPadding( value, callback );
+     }
++    
++    /******************************************************
++	 * 
++	 * Implementation of post method Rest service for push notification.
++	 *****************************************************/
++
++	@POST
++	@Path("push")
++	public JSONWithPadding sendApnsPush(@FormParam("message") String message)
++			throws Exception {
++
++		ApiResponse response = createApiResponse();
++		response.setAction("Sending push");
++
++		pushService.sendNotification(message, applicationId);
++
++		response.setSuccess();
++		return new JSONWithPadding(response);
++	}
++	
++	/*
++	 * Send Notification for all devices in active application which has already registered.
++	 */
++	@POST
++	@Path("*/push")
++	public JSONWithPadding sendNotificationByApp(@FormParam("message") String message)
++			throws Exception {
++
++		ApiResponse response = createApiResponse();
++		response.setAction("Sending push for All");
++
++		pushService.sendNotificationByApp(message, applicationId);
++
++		response.setSuccess();
++		return new JSONWithPadding(response);
++	}
++	
++	/*
++	 * Send Notification for groups which user has initialized.
++	 */
++	@RequireApplicationAccess
++	@Path("groups")
++	public AbstractContextResource getGroupsResource(@Context UriInfo ui)throws Exception{
++		Class cls = Class.forName("org.apache.usergrid.rest.applications.groups.GroupsResource");
++		logger.debug("ApplicationResource.getGroupsResource");
++		addParameter(getServiceParameters(),"groups");
++		PathSegment ps = getFirstPathSegment("groups");
++		if(ps != null){
++			addMatrixParams(getServiceParameters(), ui, ps);
++		}
++		
++		return getSubResource(cls);		
++	}
++	
++	/*
++	 * Send Notification for devices which user has initialized.
++	 */
++	@RequireApplicationAccess
++	@Path("devices")
++	public AbstractContextResource getDevicesResource(@Context UriInfo ui)throws Exception{
++		Class cls = Class.forName("org.apache.usergrid.rest.applications.devices.DevicesResource");
++		logger.debug("ApplicationResource.getDevicesResource");
++		addParameter(getServiceParameters(),"devices");
++		PathSegment ps = getFirstPathSegment("devices");
++		if(ps != null){
++			addMatrixParams(getServiceParameters(), ui, ps);
++		}		
++		return getSubResource(cls);		
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
+index ea17282..3e7bd6a 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
+@@ -295,6 +295,7 @@ public class UserResource extends ServiceResource {
+         logger.info( "UserResource.showPasswordResetForm" );
+ 
+         this.token = token;
++        System.out.println(token);
+         try {
+             if ( management.checkPasswordResetTokenForAppUser( getApplicationId(), getUserUuid(), token ) ) {
+                 return handleViewable( "resetpw_set_form", this );
+@@ -578,4 +579,19 @@ public class UserResource extends ServiceResource {
+ 
+         return super.addNameParameter( ui, itemName );
+     }
++    
++    @POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@PathParam("username") String username,@FormParam("message") String message)throws Exception{	
++		System.out.println("okkk");
++		ApiResponse response;
++		if(message!=null){
++            pushService.sendNotificationByUsername(message,getApplicationId(),user.getUsername());
++			response = createApiResponse();
++			response.setAction("Send Notifications To "+user.getUsername());			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}	
++		return null;
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
+index 1a1b576..996ed07 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
+@@ -263,4 +263,18 @@ public class UsersResource extends ServiceResource {
+         }
+         return new JSONWithPadding( response, callback );
+     }
++    
++    @POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@FormParam("message") String message)throws Exception{
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByUsers(message,getApplicationId(),null);
++			response = createApiResponse();
++			response.setAction("Send Notifications By UsersNames");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}		
++		return null;
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
+index 24a9f43..53137fa 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
+@@ -46,6 +46,7 @@ import org.apache.amber.oauth2.common.message.OAuthResponse;
+ 
+ import org.apache.usergrid.management.ActivationState;
+ import org.apache.usergrid.management.OrganizationInfo;
++import org.apache.usergrid.management.UserInfo;
+ import org.apache.usergrid.management.export.ExportService;
+ import org.apache.usergrid.persistence.cassandra.CassandraService;
+ import org.apache.usergrid.persistence.entities.Export;
+@@ -55,9 +56,11 @@ import org.apache.usergrid.rest.applications.ServiceResource;
+ import org.apache.usergrid.rest.exceptions.RedirectionException;
+ import org.apache.usergrid.rest.management.organizations.applications.ApplicationsResource;
+ import org.apache.usergrid.rest.management.organizations.users.UsersResource;
++import org.apache.usergrid.rest.security.annotations.RequireAdminUserAccess;
+ import org.apache.usergrid.rest.security.annotations.RequireOrganizationAccess;
+ import org.apache.usergrid.rest.utils.JSONPUtils;
+ import org.apache.usergrid.security.oauth.ClientCredentialsInfo;
++import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+ import org.apache.usergrid.security.tokens.exceptions.TokenException;
+ import org.apache.usergrid.services.ServiceResults;
+ 
+@@ -69,6 +72,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+ import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+ import static javax.servlet.http.HttpServletResponse.SC_OK;
+ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
++import static org.apache.usergrid.rest.exceptions.SecurityException.mappableSecurityException;
+ 
+ 
+ @Component("org.apache.usergrid.rest.management.organizations.OrganizationResource")
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
+index 71eccbf..16f58d6 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
+@@ -35,6 +35,7 @@ import javax.ws.rs.core.Context;
+ import javax.ws.rs.core.MediaType;
+ import javax.ws.rs.core.UriInfo;
+ 
++import org.apache.usergrid.persistence.entities.EnterpriseID;
+ import org.apache.usergrid.rest.RootResource;
+ import org.springframework.context.annotation.Scope;
+ import org.springframework.stereotype.Component;
+@@ -43,6 +44,7 @@ import org.apache.usergrid.management.UserInfo;
+ import org.apache.usergrid.management.exceptions.ManagementException;
+ import org.apache.usergrid.rest.AbstractContextResource;
+ import org.apache.usergrid.rest.ApiResponse;
++import org.apache.usergrid.rest.management.users.organizations.config.EnterpriseIDConfiguration;
+ import org.apache.usergrid.rest.security.annotations.RequireAdminUserAccess;
+ import org.apache.usergrid.rest.security.annotations.RequireOrganizationAccess;
+ import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+@@ -50,6 +52,8 @@ import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+ import com.google.common.collect.BiMap;
+ import com.sun.jersey.api.json.JSONWithPadding;
+ 
++import static org.apache.usergrid.rest.exceptions.SecurityException.mappableSecurityException;
++
+ 
+ @Component( "org.apache.usergrid.rest.management.users.organizations.OrganizationsResource" )
+ @Scope( "prototype" )
+@@ -205,4 +209,31 @@ public class OrganizationsResource extends AbstractContextResource {
+ 
+         return new JSONWithPadding( response, callback );
+     }
++    
++    @RequireAdminUserAccess
++    @Path("{organizationName}/config" )
++    public EnterpriseIDConfiguration getUserByUsername( @Context UriInfo ui,
++            @PathParam( "organizationName" )
++            String organizationName,
++            @QueryParam( "callback" )
++            @DefaultValue( "callback" ) String callback )
++            throws Exception { 
++    	
++    	OrganizationInfo organization = management.getOrganizationByName(organizationName);
++    	
++    	if(organization==null){
++    		throw new ManagementException( "Could not find organization for name: " + organizationName);    		
++    	}
++
++        if ( "me".equals(user.getUsername()) ) {
++            UserInfo user = SubjectUtils.getAdminUser();
++            System.out.println(user.getUsername());
++            if ( ( user != null ) && ( user.getUuid() != null ) ) {
++            	return getSubResource(EnterpriseIDConfiguration.class).init(organization);
++            }
++            throw mappableSecurityException( "unauthorized", "No admin identity for access credentials provided" );
++        }
++
++        return getSubResource(EnterpriseIDConfiguration.class).init(organization);
++    }
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java b/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
+index 865f296..dc5488e 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
++++ b/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
+@@ -25,13 +25,16 @@ import java.util.UUID;
+ 
+ import org.apache.usergrid.persistence.CredentialsInfo;
+ import org.apache.usergrid.persistence.Entity;
++import org.apache.usergrid.persistence.EntityNotifier;
+ import org.apache.usergrid.persistence.EntityRef;
+ import org.apache.usergrid.persistence.Identifier;
+ import org.apache.usergrid.persistence.entities.Application;
++import org.apache.usergrid.persistence.entities.EnterpriseID;
+ import org.apache.usergrid.persistence.entities.Group;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.security.oauth.AccessInfo;
+ import org.apache.usergrid.security.shiro.PrincipalCredentialsToken;
++import org.apache.usergrid.services.ServicePayload;
+ import org.apache.usergrid.services.ServiceResults;
+ 
+ import com.google.common.collect.BiMap;
+@@ -319,4 +322,27 @@ public interface ManagementService {
+ 
+     /** For testing purposes only */
+     public Properties getProperties();
++    
++    /**Get all notifiers from the application */
++	public Map<String, EntityNotifier> getAllNotifiers(UUID appId)throws Exception;
++
++	/**Get specific notifier from the application */
++	public EntityNotifier getNotifier(UUID appId, String notifierName)
++			throws Exception;
++	
++	/**Update notifier details */
++	public EntityNotifier updateNotifier(UUID appId, String notifierName,ServicePayload servicePayload) throws Exception;
++
++    /** Save enterpriseId settings */
++	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
++			String endpointURL, String userSearchBase, String userName)
++			throws Exception;
++	
++	/** Retrieve enterpriseId settings regarding organization name */
++	public EnterpriseID getEnterpriseIDConfigurationByOrg(
++			OrganizationInfo orgInfo) throws Exception;
++	
++	/** Test LDAP settings. If false means testing fail otherwise its returns true */
++	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,String username,String password)throws Exception;
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java b/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
+index eb6c375..a05255f 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
++++ b/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
+@@ -58,13 +58,17 @@ import org.apache.usergrid.persistence.CredentialsInfo;
+ import org.apache.usergrid.persistence.Entity;
+ import org.apache.usergrid.persistence.EntityManager;
+ import org.apache.usergrid.persistence.EntityManagerFactory;
++import org.apache.usergrid.persistence.EntityNotifier;
+ import org.apache.usergrid.persistence.EntityRef;
+ import org.apache.usergrid.persistence.Identifier;
+ import org.apache.usergrid.persistence.PagingResultsIterator;
+ import org.apache.usergrid.persistence.Results;
+ import org.apache.usergrid.persistence.Results.Level;
+ import org.apache.usergrid.persistence.SimpleEntityRef;
++import org.apache.usergrid.persistence.entities.AppleNotifier;
+ import org.apache.usergrid.persistence.entities.Application;
++import org.apache.usergrid.persistence.entities.EnterpriseID;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
+ import org.apache.usergrid.persistence.entities.Group;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.persistence.exceptions.DuplicateUniquePropertyExistsException;
+@@ -72,6 +76,8 @@ import org.apache.usergrid.persistence.exceptions.EntityNotFoundException;
+ import org.apache.usergrid.security.AuthPrincipalInfo;
+ import org.apache.usergrid.security.AuthPrincipalType;
+ import org.apache.usergrid.security.crypto.EncryptionService;
++import org.apache.usergrid.security.enterprise.AuthAdapter;
++import org.apache.usergrid.security.enterprise.AuthProvider;
+ import org.apache.usergrid.security.oauth.AccessInfo;
+ import org.apache.usergrid.security.oauth.ClientCredentialsInfo;
+ import org.apache.usergrid.security.salt.SaltProvider;
+@@ -88,6 +94,7 @@ import org.apache.usergrid.security.tokens.exceptions.TokenException;
+ import org.apache.usergrid.services.ServiceAction;
+ import org.apache.usergrid.services.ServiceManager;
+ import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.ServicePayload;
+ import org.apache.usergrid.services.ServiceRequest;
+ import org.apache.usergrid.services.ServiceResults;
+ import org.apache.usergrid.utils.ConversionUtils;
+@@ -95,6 +102,9 @@ import org.apache.usergrid.utils.JsonUtils;
+ import org.apache.usergrid.utils.MailUtils;
+ import org.apache.usergrid.utils.StringUtils;
+ import org.apache.usergrid.utils.UUIDUtils;
++import org.apache.commons.codec.digest.DigestUtils;
++import org.apache.commons.lang.text.StrSubstitutor;
++import org.apache.shiro.UnavailableSecurityManagerException;
+ 
+ import com.google.common.collect.BiMap;
+ import com.google.common.collect.HashBiMap;
+@@ -342,6 +352,7 @@ public class ManagementServiceImpl implements ManagementService {
+         else {
+             System.out.println(
+                     "Missing values for superuser account, check properties.  Skipping superuser account setup..." );
++            logger.warn("Missing values for superuser account, check properties.  Skipping superuser account setup...");
+         }
+     }
+ 
+@@ -2648,24 +2659,48 @@ public class ManagementServiceImpl implements ManagementService {
+     @Override
+     public User verifyAppUserPasswordCredentials( UUID applicationId, String name, String password ) throws Exception {
+ 
+-        User user = findUserEntity( applicationId, name );
+-        if ( user == null ) {
+-            return null;
+-        }
+-
+-        if ( verify( applicationId, user.getUuid(), password ) ) {
+-            if ( !user.activated() ) {
+-                throw new UnactivatedAppUserException();
++        EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(getOrganizationForApplication(applicationId));
++		AuthAdapter adapter = AuthProvider
++				.getAuthAdapterForApplication(applicationId);
++		adapter.setEnterpriseID(enterpriseID);
++		Boolean isAuthenticate = adapter.authenticate(name, password);
++		Boolean iscreateUserNotExist = enterpriseID.getCreateUserNotExist();
++
++		if (enterpriseID.getEnableLDAP() && isAuthenticate) {
++            
++            User user = findUserEntity( applicationId, name );
++            if ( user == null && iscreateUserNotExist) {
++                user = createUserInstanceFromEnterpriseID(applicationId, name,
++						password);
+             }
+-            if ( user.disabled() ) {
+-                throw new DisabledAppUserException();
++
++            if ( verify( applicationId, user.getUuid(), password ) ) {
++                if ( !user.activated() ) {
++                    throw new UnactivatedAppUserException();
++                }
++                if ( user.disabled() ) {
++                    throw new DisabledAppUserException();
++                }
++                return user;
+             }
+-            return user;
+-        }
++        } else {
++			throw new Exception("LDAP is not enabled.");
++		}
+ 
+         return null;
+     }
+ 
++    private User createUserInstanceFromEnterpriseID(UUID appUuid,
++			String username, String password) throws Exception {
++		ServiceManager serviceManager = smf.getServiceManager(appUuid);
++		ServicePayload servicePayload = new ServicePayload();
++		servicePayload.setProperty("username", username);
++		servicePayload.setProperty("name", username);
++		servicePayload.setProperty("password", password);
++		serviceManager.newRequest(ServiceAction.POST, parameters("users"),
++				servicePayload).execute();
++		return findUserEntity(appUuid, username);
++	}
+ 
+     public String getPasswordResetTokenForAppUser( UUID applicationId, UUID userId ) throws Exception {
+         return getTokenForPrincipal( EMAIL, TOKEN_TYPE_PASSWORD_RESET, applicationId, APPLICATION_USER, userId, 0 );
+@@ -2907,4 +2942,116 @@ public class ManagementServiceImpl implements ManagementService {
+         // TODO Auto-generated method stub
+         return null;
+     }
++    
++    @Override
++	public Map<String, EntityNotifier> getAllNotifiers(UUID appId) {
++		Map<String, EntityNotifier> notifiers = new HashMap<String, EntityNotifier>();
++		try {
++			EntityManager entityManager = emf.getEntityManager(appId);
++			ServiceManager serviceManager = smf.getServiceManager(appId);
++			ServiceResults serviceResults = serviceManager.newRequest(
++					ServiceAction.GET, parameters("notifiers")).execute();
++			List<Entity> resultEntities = serviceResults.getEntities();
++
++			for (Entity entity : resultEntities) {
++				if (entity.getName().equals("apple")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), AppleNotifier.class));
++				} else if (entity.getName().equals("google")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), GoogleNotifier.class));
++				}
++			}
++
++		} catch (Exception e) {
++			e.printStackTrace();
++		}
++
++		return notifiers;
++	}
++
++	@Override
++	public EntityNotifier getNotifier(UUID appId, String notifierName)
++			throws Exception {
++		Map<String, EntityNotifier> notifiers = getAllNotifiers(appId);
++		if (notifiers.containsKey(notifierName)) {
++			return notifiers.get(notifierName);
++		} else {
++			return null;
++		}
++	}
++
++	@Override
++	public EntityNotifier updateNotifier(UUID appId, String notifierName,
++			ServicePayload servicePayload) throws Exception {
++		ServiceManager serviceManager = smf.getServiceManager(appId);
++
++		serviceManager.newRequest(ServiceAction.PUT,
++				parameters("notifiers", notifierName), servicePayload)
++				.execute();
++
++		return getNotifier(appId, notifierName);
++	}
++
++	@Override
++	public EnterpriseID getEnterpriseIDConfigurationByOrg(
++			OrganizationInfo orgInfo) throws Exception {
++		return getEnterpriseIDConfigurationFromOrg(orgInfo);
++	}
++
++	@Override
++	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
++			String endpointURL, String userSearchBase, String userIdAttribute)
++			throws Exception {
++
++		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
++
++		EnterpriseID enterpriseID = new EnterpriseID();
++		enterpriseID.setName(orgName);
++		enterpriseID.setType(orgName);
++		enterpriseID.setEnableLDAP(enableLDAP);
++		enterpriseID.setCreateUserNotExist(createUserNotExist);
++		enterpriseID.setEndpointURL(endpointURL);
++		enterpriseID.setUserSearchBase(userSearchBase);
++		enterpriseID.setUserIdAttribute(userIdAttribute);
++
++		EnterpriseID erpPD = em.create(enterpriseID);
++
++		em.addToCollection(
++				new SimpleEntityRef(Group.ENTITY_TYPE, orgInfo.getUuid()),
++				"idms",
++				new SimpleEntityRef(EnterpriseID.ENTITY_TYPE, erpPD.getUuid()));
++
++		return erpPD;
++	}
++
++	public EnterpriseID getEnterpriseIDConfigurationFromOrg(
++			OrganizationInfo organization) throws Exception {
++		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
++		ServiceManager sm = smf.getServiceManager(MANAGEMENT_APPLICATION_ID);
++		ServiceResults serviceResults = sm.newRequest(ServiceAction.GET,
++				parameters("groups", organization.getUuid(), "idms")).execute();
++
++		List<Entity> entities = serviceResults.getEntities();
++		EnterpriseID enterpriseID = null;
++		for (Entity entity : entities) {
++			if (entity.getName().equals(organization.getName())) {
++				enterpriseID = em.get(entity.getUuid(), EnterpriseID.class);
++			}
++		}
++
++		return enterpriseID;
++	}
++
++	@Override
++	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String username, String password) throws Exception {
++		EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(orgInfo);
++		AuthAdapter authAdapter = AuthProvider
++				.getAuthAdapterForApplication(MANAGEMENT_APPLICATION_ID);
++		authAdapter.setEnterpriseID(enterpriseID);
++
++		return authAdapter.authenticate(username, password);
++	}
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java b/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
+index 90c3b7e..2ebddec 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
++++ b/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
+@@ -41,6 +41,8 @@ public class ServiceRequest {
+ 
+     private static final Logger logger = LoggerFactory.getLogger( ServiceRequest.class );
+ 
++    public static final int MAX_INVOCATIONS = 10;
++    
+     public static long count = 0;
+ 
+     private final long id = count++;
+@@ -226,7 +228,7 @@ public class ServiceRequest {
+             results = s.invoke( action, this, previousResults, payload );
+             if ( ( results != null ) && results.hasMoreRequests() ) {
+ 
+-                results = invokeMultiple( results );
++                results = invokeMultiple( results, payload );
+             }
+         }
+ 
+@@ -238,9 +240,14 @@ public class ServiceRequest {
+     }
+ 
+ 
+-    private ServiceResults invokeMultiple( ServiceResults previousResults ) throws Exception {
++    private ServiceResults invokeMultiple( ServiceResults previousResults, ServicePayload payload ) throws Exception {
+ 
+         List<ServiceRequest> requests = previousResults.getNextRequests();
++        if ( requests.size() > MAX_INVOCATIONS ) {
++            throw new IllegalArgumentException(
++                    "Maximum sub-collection requests exceeded, limit is " + MAX_INVOCATIONS + ", " + requests.size()
++                            + " attempted" );
++        }
+ 
+         if ( returnsTree ) {
+ 
+diff --git a/stack/services/src/main/resources/usergrid-services-context.xml b/stack/services/src/main/resources/usergrid-services-context.xml
+index 39748e1..6900e69 100644
+--- a/stack/services/src/main/resources/usergrid-services-context.xml
++++ b/stack/services/src/main/resources/usergrid-services-context.xml
+@@ -89,4 +89,16 @@
+ 
+   <bean id="exportJob" class="org.apache.usergrid.management.export.ExportJob" />
+ 
++    <bean id="notifierService"
++		class="org.apache.usergrid.services.notifiers.NotifiersServiceProvider">
++		<property name="serviceManagerFactory" ref="serviceManagerFactory" />
++		<property name="entityManagerFactory" ref="entityManagerFactory" />
++	</bean>
++
++	<bean id="pushService" class="org.apache.usergrid.services.push.PushServiceImpl">
++		<property name="serviceManagerFactory" ref="serviceManagerFactory" />
++		<property name="entityManagerFactory" ref="entityManagerFactory" />
++		<property name="notifierService" ref="notifierService" />
++	</bean>
++    
+ </beans>
+-- 
+1.9.3 (Apple Git-50)
+
+
+From 5d33a773157713293f3057e5ccd947c3615b6d42 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Thu, 11 Dec 2014 15:42:10 +0530
+Subject: [PATCH 2/2] added json dependency
+
+---
+ stack/services/pom.xml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/stack/services/pom.xml b/stack/services/pom.xml
+index 6c9c868..5e7b382 100644
+--- a/stack/services/pom.xml
++++ b/stack/services/pom.xml
+@@ -549,6 +549,11 @@
+       <scope>test</scope>
+     </dependency>
+ 
++    <dependency>
++		<groupId>org.json</groupId>
++		<artifactId>json</artifactId>
++        <version>20140107</version>
++    </dependency>
+ 
+   </dependencies>
+ </project>
+-- 
+1.9.3 (Apple Git-50)
+

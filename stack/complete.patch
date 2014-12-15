@@ -1,0 +1,4604 @@
+From 1f51b7b15ef04d1df2dd6600d651d93550a8ffd9 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Wed, 10 Dec 2014 14:38:53 +0530
+Subject: [PATCH 1/4] Added new files of push notification implementation
+
+Signed-off-by: vishnuvathsan <vishnuvathsan@gmail.com>
+---
+ .../persistence/entities/AppleNotifier.java        |  90 +++++
+ .../persistence/entities/EnterpriseID.java         | 112 ++++++
+ .../apache/usergrid/persistence/entities/File.java |  75 ++++
+ .../persistence/entities/GoogleNotifier.java       |  87 +++++
+ .../rest/applications/devices/DevicesResource.java |  67 ++++
+ .../rest/applications/groups/GroupsResource.java   |  65 ++++
+ .../applications/notifiers/NotifiersResource.java  | 103 ++++++
+ .../config/EnterpriseIDConfiguration.java          |  87 +++++
+ .../usergrid/security/enterprise/AuthAdapter.java  |  15 +
+ .../usergrid/security/enterprise/AuthProvider.java |  20 ++
+ .../usergrid/security/enterprise/AuthType.java     |   5 +
+ .../security/enterprise/LdapSimpleAdapter.java     |  64 ++++
+ .../notifierServices/AndroidMessageSender.java     |  45 +++
+ .../notifierServices/AppleMessageSender.java       |  83 +++++
+ .../services/notifierServices/IMessageSender.java  |  28 ++
+ .../services/notifierServices/MessageSender.java   |  79 +++++
+ .../services/notifierServices/NotifierService.java |  33 ++
+ .../notifierServices/apns/IApnsConnection.java     |  29 ++
+ .../apns/IApnsFeedbackConnection.java              |  30 ++
+ .../notifierServices/apns/IApnsService.java        |  52 +++
+ .../apns/impl/ApnsConnectionImpl.java              | 330 ++++++++++++++++++
+ .../apns/impl/ApnsConnectionPool.java              | 100 ++++++
+ .../apns/impl/ApnsFeedbackConnectionImpl.java      | 103 ++++++
+ .../notifierServices/apns/impl/ApnsResender.java   |  48 +++
+ .../apns/impl/ApnsServiceImpl.java                 | 155 +++++++++
+ .../notifierServices/apns/model/ApnsConfig.java    | 139 ++++++++
+ .../notifierServices/apns/model/ApnsConstants.java |  46 +++
+ .../notifierServices/apns/model/Command.java       |  29 ++
+ .../notifierServices/apns/model/ErrorResponse.java |  59 ++++
+ .../notifierServices/apns/model/Feedback.java      |  51 +++
+ .../notifierServices/apns/model/FrameItem.java     |  66 ++++
+ .../notifierServices/apns/model/Payload.java       | 173 ++++++++++
+ .../apns/model/PushNotification.java               | 100 ++++++
+ .../notifierServices/apns/tools/ApnsTools.java     | 147 ++++++++
+ .../gcm/GoogleNotificationService.java             | 137 ++++++++
+ .../notifiers/NotifiersServiceProvider.java        | 112 ++++++
+ .../apache/usergrid/services/push/PushService.java |  54 +++
+ .../usergrid/services/push/PushServiceImpl.java    | 377 +++++++++++++++++++++
+ 38 files changed, 3395 insertions(+)
+ create mode 100644 stack/core/src/main/java/org/apache/usergrid/persistence/entities/AppleNotifier.java
+ create mode 100644 stack/core/src/main/java/org/apache/usergrid/persistence/entities/EnterpriseID.java
+ create mode 100644 stack/core/src/main/java/org/apache/usergrid/persistence/entities/File.java
+ create mode 100644 stack/core/src/main/java/org/apache/usergrid/persistence/entities/GoogleNotifier.java
+ create mode 100644 stack/rest/src/main/java/org/apache/usergrid/rest/applications/devices/DevicesResource.java
+ create mode 100644 stack/rest/src/main/java/org/apache/usergrid/rest/applications/groups/GroupsResource.java
+ create mode 100644 stack/rest/src/main/java/org/apache/usergrid/rest/applications/notifiers/NotifiersResource.java
+ create mode 100644 stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/config/EnterpriseIDConfiguration.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthAdapter.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthProvider.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthType.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/security/enterprise/LdapSimpleAdapter.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AndroidMessageSender.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AppleMessageSender.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/IMessageSender.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/MessageSender.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/NotifierService.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsConnection.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsFeedbackConnection.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsService.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionImpl.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionPool.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsFeedbackConnectionImpl.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsResender.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsServiceImpl.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConfig.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConstants.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Command.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ErrorResponse.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Feedback.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/FrameItem.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Payload.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/PushNotification.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/tools/ApnsTools.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifierServices/gcm/GoogleNotificationService.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/notifiers/NotifiersServiceProvider.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/push/PushService.java
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/services/push/PushServiceImpl.java
+
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/AppleNotifier.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/AppleNotifier.java
+new file mode 100644
+index 0000000..34d71ae
+--- /dev/null
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/AppleNotifier.java
+@@ -0,0 +1,90 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.apache.usergrid.persistence.entities;
++
++import javax.xml.bind.annotation.XmlElement;
++import javax.xml.bind.annotation.XmlRootElement;
++
++import org.codehaus.jackson.map.annotate.JsonSerialize;
++import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.TypedEntity;
++import org.apache.usergrid.persistence.annotations.EntityProperty;
++
++@XmlRootElement
++public class AppleNotifier extends TypedEntity implements EntityNotifier {
++	@EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true, basic = true)
++	protected String name;
++	@EntityProperty
++	private String certificatePassword;
++	@EntityProperty
++	private File file;
++	@EntityProperty
++	private Integer time_to_live;
++	@EntityProperty
++	private Boolean enablePush;
++
++	@Override
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public String getName() {
++		return name;
++	}
++
++	public void setName(String name) {
++		this.name = name;
++	}
++
++	@XmlElement(name = "time_to_live")
++	public Integer getTime_to_live() {
++		return time_to_live;
++	}
++
++	public void setTime_to_live(Integer time_to_live) {
++		this.time_to_live = time_to_live;
++	}
++
++	@Override
++	@XmlElement(name = "enablePush")
++	public Boolean getEnablePush() {
++		return enablePush;
++	}
++
++	@Override
++	public void setEnablePush(Boolean enablePush) {
++		this.enablePush = enablePush;
++	}	
++	
++	@XmlElement(name = "file")
++	public File getFile() {
++		return file;
++	}
++
++	@XmlElement(name = "certificatePassword")
++	public String getCertificatePassword() {
++		return certificatePassword;
++	}
++
++	public void setCertificatePassword(String certificatePassword) {
++		this.certificatePassword = certificatePassword;
++	}
++
++	public void setFile(File file) {
++		this.file = file;
++	}	
++	
++}
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/EnterpriseID.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/EnterpriseID.java
+new file mode 100644
+index 0000000..ea7faa7
+--- /dev/null
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/EnterpriseID.java
+@@ -0,0 +1,112 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.persistence.entities;
++
++import java.util.UUID;
++
++import javax.xml.bind.annotation.XmlElement;
++import javax.xml.bind.annotation.XmlRootElement;
++
++import org.apache.usergrid.persistence.TypedEntity;
++import org.apache.usergrid.persistence.annotations.EntityProperty;
++import org.codehaus.jackson.map.annotate.JsonSerialize;
++import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
++
++@XmlRootElement
++public class EnterpriseID extends TypedEntity {
++	public static final String ENTITY_TYPE = "idm";
++	
++	public static final String PROPERTY_UUID = "uuid";
++
++	@EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true, basic = true)
++	private String name;
++	@EntityProperty
++	private Boolean enableLDAP;
++	@EntityProperty
++	private Boolean createUserNotExist;
++	@EntityProperty
++	private String endpointURL;
++	@EntityProperty
++	private String userSearchBase;
++	@EntityProperty
++	private String userIdAttribute;
++	
++	public EnterpriseID() {
++		// TODO Auto-generated constructor stub
++	}	
++	
++	public EnterpriseID(UUID id) {
++		uuid =id;	
++	}	
++
++	@Override
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public String getName() {
++		return name;
++	}
++
++	public void setName(String name) {
++		this.name = name;
++	}
++
++	@XmlElement(name = "enableLDAP")
++	public Boolean getEnableLDAP() {
++		return enableLDAP;
++	}
++
++	public void setEnableLDAP(Boolean enableLDAP) {
++		this.enableLDAP = enableLDAP;
++	}
++
++	@XmlElement(name = "createUserNotExist")
++	public Boolean getCreateUserNotExist() {
++		return createUserNotExist;
++	}
++
++	public void setCreateUserNotExist(Boolean createUserNotExist) {
++		this.createUserNotExist = createUserNotExist;
++	}
++
++	@XmlElement(name = "endpointURL")
++	public String getEndpointURL() {
++		return endpointURL;
++	}
++
++	public void setEndpointURL(String endpointURL) {
++		this.endpointURL = endpointURL;
++	}
++
++	@XmlElement(name = "userSearchBase")
++	public String getUserSearchBase() {
++		return userSearchBase;
++	}
++
++	public void setUserSearchBase(String userSearchBase) {
++		this.userSearchBase = userSearchBase;
++	}
++
++	@XmlElement(name = "userIdAttribute")
++	public String getUserIdAttribute() {
++		return userIdAttribute;
++	}
++
++	public void setUserIdAttribute(String userIdAttribute) {
++		this.userIdAttribute = userIdAttribute;
++	}	
++	
++	
++}
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/File.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/File.java
+new file mode 100644
+index 0000000..a5d6c71
+--- /dev/null
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/File.java
+@@ -0,0 +1,75 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.persistence.entities;
++
++import java.text.DecimalFormat;
++
++import javax.xml.bind.annotation.XmlRootElement;
++
++import org.apache.usergrid.persistence.annotations.EntityProperty;
++import org.codehaus.jackson.annotate.JsonIgnore;
++import org.codehaus.jackson.map.annotate.JsonSerialize;
++import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
++
++@XmlRootElement
++public class File{
++	@EntityProperty
++	private String fileName;	
++	@EntityProperty
++	private byte[] fileAsByteArray;
++	@EntityProperty
++	private Integer sizeOfFile;
++
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public byte[] getFileAsByteArray() {
++		return fileAsByteArray;
++	}
++
++	public void setFileAsByteArray(byte[] fileAsByteArray) {
++		this.fileAsByteArray = fileAsByteArray;
++	}
++
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public Integer getSizeOfFile() {
++		return sizeOfFile;
++	}
++
++	public void setSizeOfFile(Integer sizeOfFile) {
++		this.sizeOfFile = sizeOfFile;
++	}
++
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public String getFileName() {
++		return fileName;
++	}
++
++	public void setFileName(String fileName) {
++		this.fileName = fileName;
++	}	
++	
++	@JsonIgnore
++	public String getFileDetails(){
++		StringBuffer stringBuffer = new StringBuffer();
++		stringBuffer.append("FileName: "+this.getFileName()+"\n");
++		float fileSizeF = this.getSizeOfFile().floatValue()/1024;
++		DecimalFormat decimalFormat = new DecimalFormat("#.###");		
++		stringBuffer.append("FileSize: "+decimalFormat.format(fileSizeF)+"kb");
++		
++		return stringBuffer.toString();
++	}
++	
++}
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/GoogleNotifier.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/GoogleNotifier.java
+new file mode 100644
+index 0000000..961eda2
+--- /dev/null
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/GoogleNotifier.java
+@@ -0,0 +1,87 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.persistence.entities;
++
++import javax.xml.bind.annotation.XmlElement;
++import javax.xml.bind.annotation.XmlRootElement;
++
++import org.codehaus.jackson.map.annotate.JsonSerialize;
++import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.TypedEntity;
++import org.apache.usergrid.persistence.annotations.EntityProperty;
++
++@XmlRootElement
++public class GoogleNotifier extends TypedEntity implements EntityNotifier {
++	@EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true, basic = true)
++	protected String name;
++	@EntityProperty
++	private String apiKey;
++	@EntityProperty
++	private Boolean delay_while_idle;
++	@EntityProperty
++	private Integer time_to_live;
++	@EntityProperty
++	private Boolean enablePush;
++	
++	@Override
++	@JsonSerialize(include = Inclusion.NON_NULL)
++	public String getName() {
++		return name;
++	}
++
++	public void setName(String name) {
++		this.name = name;
++	}	
++	
++	@XmlElement(name="delay_while_idle")
++	public Boolean getDelay_while_idle() {
++		return delay_while_idle;
++	}
++	
++	public void setDelay_while_idle(Boolean delay_while_idle) {
++		this.delay_while_idle = delay_while_idle;
++	}
++	@XmlElement(name="time_to_live")
++	public Integer getTime_to_live() {
++		return time_to_live;
++	}
++	public void setTime_to_live(Integer time_to_live) {
++		this.time_to_live = time_to_live;
++	}	
++
++	@XmlElement(name="apiKey")
++	public String getApiKey() {
++		return apiKey;
++	}
++
++	public void setApiKey(String apiKey) {
++		this.apiKey = apiKey;
++	}
++	
++	@Override
++	@XmlElement(name="enablePush")
++	public Boolean getEnablePush() {
++		return enablePush;
++	}
++
++	@Override
++	public void setEnablePush(Boolean enablePush) {
++		this.enablePush = enablePush;
++	}		
++
++}
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/devices/DevicesResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/devices/DevicesResource.java
+new file mode 100644
+index 0000000..c291099
+--- /dev/null
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/devices/DevicesResource.java
+@@ -0,0 +1,67 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.rest.applications.devices;
++
++import java.util.UUID;
++
++import javax.ws.rs.FormParam;
++import javax.ws.rs.POST;
++import javax.ws.rs.Path;
++import javax.ws.rs.PathParam;
++import javax.ws.rs.Produces;
++import javax.ws.rs.core.MediaType;
++
++import org.apache.usergrid.rest.ApiResponse;
++import org.apache.usergrid.rest.applications.ServiceResource;
++import org.springframework.context.annotation.Scope;
++import org.springframework.stereotype.Component;
++
++import com.sun.jersey.api.json.JSONWithPadding;
++
++@Component("org.apache.usergrid.rest.applications.devices.DevicesResource")
++@Scope("prototype")
++@Produces(MediaType.APPLICATION_JSON)
++public class DevicesResource extends ServiceResource {
++	
++	@POST
++	@Path("{deviceId}/push")
++	public JSONWithPadding sendPushToDevice(@PathParam("deviceId") String deviceId,@FormParam("message") String message)throws Exception{
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByDeviceId(message, getApplicationId(), UUID.fromString(deviceId));
++			response = createApiResponse();
++			response.setAction("Send Notifications By DeviceID");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}	
++		return null;
++	}	
++	
++	@POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@FormParam("message") String message)throws Exception{
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByDevices(message,getApplicationId());
++			response = createApiResponse();
++			response.setAction("Send Notifications By Devices");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}		
++		return null;
++	}	
++}
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/groups/GroupsResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/groups/GroupsResource.java
+new file mode 100644
+index 0000000..899cb07
+--- /dev/null
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/groups/GroupsResource.java
+@@ -0,0 +1,65 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.rest.applications.groups;
++
++import javax.ws.rs.FormParam;
++import javax.ws.rs.POST;
++import javax.ws.rs.Path;
++import javax.ws.rs.PathParam;
++import javax.ws.rs.Produces;
++import javax.ws.rs.core.MediaType;
++
++import org.apache.usergrid.rest.ApiResponse;
++import org.apache.usergrid.rest.applications.ServiceResource;
++import org.springframework.context.annotation.Scope;
++import org.springframework.stereotype.Component;
++
++import com.sun.jersey.api.json.JSONWithPadding;
++
++@Component("org.apache.usergrid.rest.applications.groups.GroupsResource")
++@Scope("prototype")
++@Produces(MediaType.APPLICATION_JSON)
++public class GroupsResource extends ServiceResource {	
++
++	@POST
++	@Path("{groupName}/push")
++	public JSONWithPadding sendPushToDevice(@PathParam("groupName") String groupName,@FormParam("message") String message)throws Exception{		
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByGroupName(message, getApplicationId(), groupName);
++			response = createApiResponse();
++			response.setAction("Send Notifications By Groups");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}		
++		return null;
++	}	
++	
++	@POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@FormParam("message") String message)throws Exception{
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByGroups(message,getApplicationId());
++			response = createApiResponse();
++			response.setAction("Send Notifications By Groups");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}		
++		return null;
++	}
++}
+\ No newline at end of file
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/notifiers/NotifiersResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/notifiers/NotifiersResource.java
+new file mode 100644
+index 0000000..384392e
+--- /dev/null
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/notifiers/NotifiersResource.java
+@@ -0,0 +1,103 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.rest.applications.notifiers;
++
++
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.util.Map;
++
++import javax.ws.rs.Consumes;
++import javax.ws.rs.DefaultValue;
++import javax.ws.rs.GET;
++import javax.ws.rs.POST;
++import javax.ws.rs.PUT;
++import javax.ws.rs.Path;
++import javax.ws.rs.PathParam;
++import javax.ws.rs.Produces;
++import javax.ws.rs.QueryParam;
++import javax.ws.rs.core.Context;
++import javax.ws.rs.core.MediaType;
++import javax.ws.rs.core.UriInfo;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.File;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
++import org.apache.usergrid.rest.applications.ApplicationResource;
++import org.apache.usergrid.rest.applications.ServiceResource;
++import org.apache.usergrid.rest.security.annotations.RequireApplicationAccess;
++import org.apache.usergrid.services.ServicePayload;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.context.annotation.Scope;
++import org.springframework.stereotype.Component;
++
++import com.sun.jersey.multipart.FormDataParam;
++
++import static org.apache.usergrid.utils.ConversionUtils.string;
++
++@Component("org.apache.usergrid.rest.applications.notifiers.NotifiersResource")
++@Scope("prototype")
++@Produces(MediaType.APPLICATION_JSON)
++public class NotifiersResource extends ServiceResource {
++	public static final Logger logger = LoggerFactory
++			.getLogger(ApplicationResource.class);
++	private static File file;
++	
++	@GET
++	@Path("*")
++	public Map<String,EntityNotifier> getAllNotifiers()throws Exception{		
++		return management.getAllNotifiers(getApplicationId());		
++	}	
++	
++	@PUT
++	@Path("{notifierName}/p12")
++	public EntityNotifier bindP12File(@PathParam("notifierName") String notifierName)throws Exception{	
++		ServicePayload servicePayload = new ServicePayload();
++		servicePayload.setProperty("file",file);
++		EntityNotifier entityNotifier = management.updateNotifier(getApplicationId(),notifierName, servicePayload);
++		file=null;
++        return entityNotifier;
++	}
++	
++	@POST
++	@RequireApplicationAccess
++	@Path("p12")
++	@Consumes(MediaType.MULTIPART_FORM_DATA)	
++	public void registerP12ToNotifier(@FormDataParam("file") InputStream inputStream) {		
++		if (file == null) {			
++			file = new File();			
++			ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();			
++			byte[] bytes = new byte[1024];
++			int data = 0;
++			try {			
++				if(inputStream!=null){					
++					while ((data = inputStream.read(bytes,0,bytes.length))!=-1) {			
++						byteArrayOutputStream.write(bytes,0,data);						
++					}
++					file.setSizeOfFile(byteArrayOutputStream.size());
++					file.setFileAsByteArray(byteArrayOutputStream.toByteArray());
++					logger.debug("NotifiersResource.executeUploding"+file.getFileDetails());					
++				}				
++			} catch (IOException e) {
++				e.printStackTrace();
++			}						
++		}
++	}	
++
++}
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/config/EnterpriseIDConfiguration.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/config/EnterpriseIDConfiguration.java
+new file mode 100644
+index 0000000..d90743e
+--- /dev/null
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/config/EnterpriseIDConfiguration.java
+@@ -0,0 +1,87 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.rest.management.users.organizations.config;
++
++import java.util.Map;
++
++import javax.ws.rs.Consumes;
++import javax.ws.rs.DefaultValue;
++import javax.ws.rs.GET;
++import javax.ws.rs.POST;
++import javax.ws.rs.Path;
++import javax.ws.rs.Produces;
++import javax.ws.rs.QueryParam;
++import javax.ws.rs.core.Context;
++import javax.ws.rs.core.MediaType;
++import javax.ws.rs.core.UriInfo;
++
++import org.apache.usergrid.management.OrganizationInfo;
++import org.apache.usergrid.persistence.entities.EnterpriseID;
++import org.apache.usergrid.rest.AbstractContextResource;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.context.annotation.Scope;
++import org.springframework.stereotype.Component;
++
++import static org.apache.usergrid.utils.ConversionUtils.string;
++
++
++@Component("org.apache.usergrid.rest.management.users.organizations.config.EnterpriseIDConfiguration")
++@Scope("prototype")
++@Produces({ MediaType.APPLICATION_JSON, "application/javascript",
++		"application/x-javascript", "text/ecmascript",
++		"application/ecmascript", "text/jscript" })
++public class EnterpriseIDConfiguration extends AbstractContextResource {
++	private static final Logger logger = LoggerFactory.getLogger(EnterpriseIDConfiguration.class);
++	
++	OrganizationInfo organization;
++
++	public EnterpriseIDConfiguration init(OrganizationInfo organization) {
++		this.organization = organization;
++		return this;
++	}
++
++	@POST
++	@Path("idm")
++	@Consumes(MediaType.APPLICATION_JSON)
++	public EnterpriseID saveEnterpriseIDConfiguration(EnterpriseID erpPluginData)throws Exception {		
++		logger.info("create EnterpriseResourceData initialized");		
++		EnterpriseID enterpriseID = management.saveEnterpriseIDConfiguration(organization,organization.getName(),erpPluginData.getEnableLDAP(),erpPluginData.getCreateUserNotExist(),erpPluginData.getEndpointURL(),erpPluginData.getUserSearchBase(),erpPluginData.getUserIdAttribute());		
++		
++		return enterpriseID;
++	}
++
++	@GET
++	@Path("idm")
++	public EnterpriseID getEnterpriseIDConfiguration()throws Exception {		
++		logger.info("getEnterpriseResourceData initialized");		
++		
++        return management.getEnterpriseIDConfigurationByOrg(organization);		
++	}
++	
++	@POST
++	@Path("test")
++	@Consumes(MediaType.APPLICATION_JSON)
++	public Boolean testEnterpriseIDConfiguration(@Context UriInfo ui, Map<String, Object> json,
++            @QueryParam("callback") @DefaultValue("callback") String callback)throws Exception{
++		String username = string(json.get("username"));
++		String password = string(json.get("password"));
++		
++		return management.testEnterpriseIDConfiguration(organization,username,password);
++	}
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthAdapter.java b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthAdapter.java
+new file mode 100644
+index 0000000..90a083a
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthAdapter.java
+@@ -0,0 +1,15 @@
++package org.apache.usergrid.security.enterprise;
++
++import org.apache.usergrid.persistence.entities.EnterpriseID;
++
++public interface AuthAdapter {
++
++  public boolean authenticate(final String username, final String password);
++
++  public boolean enabled();
++
++  public boolean createUserIfNotExist();
++  
++  public void setEnterpriseID(EnterpriseID enterpriseID);
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthProvider.java b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthProvider.java
+new file mode 100644
+index 0000000..39c51b0
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthProvider.java
+@@ -0,0 +1,20 @@
++package org.apache.usergrid.security.enterprise;
++
++import java.util.UUID;
++
++public class AuthProvider {
++
++  private static AuthAdapter ldapSimpleAdapter = new LdapSimpleAdapter();
++  
++  public static AuthAdapter getAuthAdapterForApplication(UUID applicationId) {   
++    AuthType type = AuthType.LDAP_SIMPLE;
++    
++    switch (type) {
++      case LDAP_SIMPLE:
++        return ldapSimpleAdapter;
++    }
++    
++    return null;
++  }
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthType.java b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthType.java
+new file mode 100644
+index 0000000..c395b40
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/AuthType.java
+@@ -0,0 +1,5 @@
++package org.apache.usergrid.security.enterprise;
++
++public enum AuthType {
++  LDAP_SIMPLE
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/enterprise/LdapSimpleAdapter.java b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/LdapSimpleAdapter.java
+new file mode 100644
+index 0000000..d384eb3
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/security/enterprise/LdapSimpleAdapter.java
+@@ -0,0 +1,64 @@
++package org.apache.usergrid.security.enterprise;
++
++import java.util.Hashtable;
++
++import javax.naming.AuthenticationException;
++import javax.naming.Context;
++import javax.naming.NamingException;
++import javax.naming.directory.DirContext;
++import javax.naming.directory.InitialDirContext;
++
++import org.apache.usergrid.persistence.entities.EnterpriseID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++public class LdapSimpleAdapter implements AuthAdapter {
++
++	private static final Logger logger = LoggerFactory
++			.getLogger(LdapSimpleAdapter.class);
++
++	private EnterpriseID enterpriseID;
++
++	@Override
++	public boolean authenticate(final String username, final String password) {
++		final String dn = "uid=" + username + "," + enterpriseID.getUserSearchBase();
++		final String ldapURL = enterpriseID.getEndpointURL();
++
++		Hashtable<String, String> environment = new Hashtable<String, String>();
++		environment.put(Context.INITIAL_CONTEXT_FACTORY,
++				"com.sun.jndi.ldap.LdapCtxFactory");
++		environment.put(Context.PROVIDER_URL, ldapURL);
++		environment.put(Context.SECURITY_AUTHENTICATION, "simple");
++		environment.put(Context.SECURITY_PRINCIPAL, dn);
++		environment.put(Context.SECURITY_CREDENTIALS, password);
++
++		try {
++			DirContext authContext = new InitialDirContext(environment);
++			logger.debug("User " + username
++					+ " authenticated successfully with LDAP");
++			authContext.close();
++			return true;
++		} catch (AuthenticationException ex) {
++			logger.debug("User " + username
++					+ " did NOT authenticate successfully with LDAP");
++		} catch (NamingException ex) {
++			logger.info("Encountered unexpected error: " + ex.getMessage());
++		}
++
++		return false;
++	}
++
++	public boolean enabled() {
++		return enterpriseID.getEnableLDAP();
++	}
++
++	public boolean createUserIfNotExist() {
++		return enterpriseID.getCreateUserNotExist();
++	}	
++
++	@Override
++	public void setEnterpriseID(EnterpriseID enterpriseID) {
++		this.enterpriseID = enterpriseID;
++	}
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AndroidMessageSender.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AndroidMessageSender.java
+new file mode 100644
+index 0000000..eac9cdf
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AndroidMessageSender.java
+@@ -0,0 +1,45 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
++import org.apache.usergrid.services.notifierServices.gcm.GoogleNotificationService;
++
++public class AndroidMessageSender implements IMessageSender {
++	private GoogleNotifier notifier;
++	//private String messagePayload;
++	//private static final String BASE_URL = "https://android.googleapis.com/gcm/send";
++	//private List<String> devicesIds;
++	private String deviceId;
++
++	@Override
++	public void setPushParameters(EntityNotifier googleNotifier,
++			String deviceToken) {
++		notifier = (GoogleNotifier) googleNotifier;
++		deviceId = deviceToken;
++		
++	}
++
++	@Override
++	public void sendPushNotification(String message, String body) {
++		GoogleNotificationService googleNotificationService = new GoogleNotificationService(notifier,message,deviceId);
++		Integer executedState = googleNotificationService.executeHTTPSConnectionBuilder();
++		System.out.println(executedState);		
++	}	
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AppleMessageSender.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AppleMessageSender.java
+new file mode 100644
+index 0000000..1740890
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/AppleMessageSender.java
+@@ -0,0 +1,83 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices;
++
++import java.io.ByteArrayInputStream;
++import java.io.InputStream;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.AppleNotifier;
++import org.apache.usergrid.services.notifierServices.apns.IApnsService;
++import org.apache.usergrid.services.notifierServices.apns.impl.ApnsServiceImpl;
++import org.apache.usergrid.services.notifierServices.apns.model.ApnsConfig;
++import org.apache.usergrid.services.notifierServices.apns.model.Payload;
++
++public class AppleMessageSender implements IMessageSender {
++
++	private static IApnsService apnsService;
++	private AppleNotifier appleNotifier;
++	private String deviceToken = "";
++
++	public AppleMessageSender() {
++
++	}
++
++	@Override
++	public void sendPushNotification(String message, String body) {
++
++		getApnsService();
++
++		Payload payload = new Payload();
++		payload.setAlert("Usergrid Demo Notification");		
++		payload.setAlertBody(message);
++		// If this property is absent, the badge is not changed. To remove the
++		// badge, set the value of this property to 0
++		payload.setBadge(0);
++
++		apnsService.sendNotification(deviceToken, payload);
++
++	}
++
++	/**
++	 * Get the APNS service
++	 */
++	private void getApnsService() {
++
++		if (apnsService == null) {
++			ApnsConfig config = new ApnsConfig();
++
++			InputStream is = new ByteArrayInputStream(appleNotifier.getFile()
++					.getFileAsByteArray());
++
++			config.setKeyStore(is);
++			config.setDevEnv(true);
++			config.setPassword(appleNotifier.getCertificatePassword());
++			config.setPoolSize(5);
++			apnsService = ApnsServiceImpl.createInstance(config);
++		}
++	}
++
++	@Override
++	public void setPushParameters(EntityNotifier appleNotifier,
++			String deviceToken) {
++
++		this.appleNotifier = (AppleNotifier) appleNotifier;
++		this.deviceToken = deviceToken;
++
++	}
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/IMessageSender.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/IMessageSender.java
+new file mode 100644
+index 0000000..1caa480
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/IMessageSender.java
+@@ -0,0 +1,28 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++
++public interface IMessageSender {
++
++	void sendPushNotification(String message, String body);
++	
++	void setPushParameters(EntityNotifier notifier,
++			String deviceToken);
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/MessageSender.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/MessageSender.java
+new file mode 100644
+index 0000000..e34b46e
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/MessageSender.java
+@@ -0,0 +1,79 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.Device;
++
++/**
++ * This class use to get the message sender depend on the devices' platform.
++ * 
++ * @author virtusa
++ * 
++ * 
++ */
++public class MessageSender {
++	private static final String IOS_PLATFORM = "iOS";
++	private static final String ANDROID_PLATFORM = "google";
++	private IMessageSender appleSender;
++	private IMessageSender gooleSender;
++	private EntityNotifier appleNotifier;
++	private EntityNotifier googleNotifier;
++	private static MessageSender messageSender;
++
++	private MessageSender() {		
++		this.appleSender = new AppleMessageSender();
++		this.gooleSender = new AndroidMessageSender();			
++	}
++	
++	public static MessageSender getMessageSenderInstance(EntityNotifier appNotifier,EntityNotifier googleNotifier){
++		if(messageSender==null){
++			synchronized (MessageSender.class) {
++				messageSender = new MessageSender();
++				messageSender.appleNotifier = appNotifier;
++				messageSender.googleNotifier = googleNotifier;
++			}
++		}
++		return messageSender;
++	}
++
++	public IMessageSender getSenderInstance(Device device) {
++		
++		String platform = device.getPlatform();
++		if (IOS_PLATFORM.equals(platform)) {			
++			if (appleNotifier.getEnablePush()) {
++				System.out.println("APPLE NOTIFIER :" + appleNotifier.toString());
++				appleSender.setPushParameters(appleNotifier, device.getToken());
++			} else {
++				System.out.println("Notifier is disabled.");
++			}
++			return appleSender;
++
++		} else if (ANDROID_PLATFORM.equals(platform)) {			
++			if (googleNotifier.getEnablePush()) {
++				System.out.println("ANDROID NOTIFIER :" + googleNotifier.toString());
++				gooleSender.setPushParameters(googleNotifier, device.getToken());
++			} else {
++				System.out.println("Notifier is disabled.");
++			}
++			return gooleSender;
++		}
++		return null;
++
++	}
++	
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/NotifierService.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/NotifierService.java
+new file mode 100644
+index 0000000..e6b7536
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/NotifierService.java
+@@ -0,0 +1,33 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices;
++
++import java.net.HttpURLConnection;
++import java.net.URL;
++
++import org.json.simple.JSONObject;
++
++public interface NotifierService {
++
++	Integer executeHTTPSConnectionBuilder();
++
++	HttpURLConnection getPostHTTPConnection(URL url, String contentType)
++			throws Exception;
++
++	Integer post(HttpURLConnection httpURLConnection, JSONObject jsonObject);
++
++}
+\ No newline at end of file
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsConnection.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsConnection.java
+new file mode 100644
+index 0000000..2e77c99
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsConnection.java
+@@ -0,0 +1,29 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns;
++
++import java.io.Closeable;
++
++import org.apache.usergrid.services.notifierServices.apns.model.Payload;
++import org.apache.usergrid.services.notifierServices.apns.model.PushNotification;
++
++
++public interface IApnsConnection extends Closeable {
++	
++	public void sendNotification(String token, Payload payload);
++
++	public void sendNotification(PushNotification notification);
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsFeedbackConnection.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsFeedbackConnection.java
+new file mode 100644
+index 0000000..3ad2491
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsFeedbackConnection.java
+@@ -0,0 +1,30 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns;
++
++import java.util.List;
++
++import org.apache.usergrid.services.notifierServices.apns.model.Feedback;
++
++
++/**
++ * @author RamosLi
++ *
++ */
++public interface IApnsFeedbackConnection {
++	
++	public List<Feedback> getFeedbacks();
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsService.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsService.java
+new file mode 100644
+index 0000000..fe7ab58
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/IApnsService.java
+@@ -0,0 +1,52 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns;
++
++import java.util.List;
++
++import org.apache.usergrid.services.notifierServices.apns.model.Feedback;
++import org.apache.usergrid.services.notifierServices.apns.model.Payload;
++import org.apache.usergrid.services.notifierServices.apns.model.PushNotification;
++
++
++/**
++ * @author RamosLi
++ * Email: lzhc2004@163.com
++ * 中文名：李志才
++ * 微博: http://weibo.com/u/1809640367
++ * 
++ */
++public interface IApnsService {
++	/**
++	 * @param token  deviceToken
++	 * @param payload
++	 */
++	public void sendNotification(String token, Payload payload);
++	/**
++	 * If you want to specify the ID of a notification, use this method
++	 * @param notification
++	 */
++	public void sendNotification(PushNotification notification);
++	
++	public void shutdown();
++	
++	/**
++	 * EN: You should call this interface once an hour, once a day or other time as you wish
++	 * CN: 返回用户在设备上卸载了APP的device token。这个接口最好定期调用，比如一天一次，或者一小时一次等等
++	 * @return the device tokens which belong to the app that doesn't exist on the device.
++	 */
++	public List<Feedback> getFeedbacks();
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionImpl.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionImpl.java
+new file mode 100644
+index 0000000..75111a3
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionImpl.java
+@@ -0,0 +1,330 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.impl;
++
++
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.io.UnsupportedEncodingException;
++import java.net.Socket;
++import java.net.SocketTimeoutException;
++import java.net.UnknownHostException;
++import java.util.LinkedList;
++import java.util.Queue;
++import java.util.concurrent.atomic.AtomicInteger;
++
++import javax.net.SocketFactory;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.usergrid.services.notifierServices.apns.IApnsConnection;
++import org.apache.usergrid.services.notifierServices.apns.model.Command;
++import org.apache.usergrid.services.notifierServices.apns.model.ErrorResponse;
++import org.apache.usergrid.services.notifierServices.apns.model.Payload;
++import org.apache.usergrid.services.notifierServices.apns.model.PushNotification;
++import org.apache.usergrid.services.notifierServices.apns.tools.ApnsTools;
++
++/**
++ * @author RamosLi
++ *
++ */
++public class ApnsConnectionImpl implements IApnsConnection {
++	
++public static final int ERROR_RESPONSE_BYTES_LENGTH = 6;
++	
++	public static final int PAY_LOAD_MAX_LENGTH = 256;
++	
++	public static final String CHARSET_ENCODING = "UTF-8";
++	
++	private static AtomicInteger IDENTIFIER = new AtomicInteger(100);
++	
++	private Log logger = LogFactory.getLog(ApnsConnectionImpl.class);
++	
++	// never expire
++	private int EXPIRE = Integer.MAX_VALUE;
++	
++	private SocketFactory factory;
++	/**
++	 * EN: There are two threads using the socket, one for writing, one for reading.
++	 * CN: 一个socket，最多有两个线程在使用它，一个读一个写。
++	 */
++	private Socket socket;
++	/**
++	 * When a notification is sent, cache it into this queue. It may be resent.
++	 */
++	private Queue<PushNotification> notificationCachedQueue = new LinkedList<PushNotification>();
++	
++	/**
++	 * Whether find error in the last connection
++	 */
++	private boolean errorHappendedLastConn = false;
++	
++	/**
++	 * Whether first write data in the connection
++	 */
++	private boolean isFirstWrite = false;
++	
++	private int maxRetries;
++	private int maxCacheLength;
++	
++	private int readTimeOut;
++	
++	private String host;
++	private int port;
++	
++	/**
++	 * You can find the properly ApnsService to resend notifications by this name  
++	 */
++	private String name;
++	
++	/**
++	 * connection name
++	 */
++	private String connName;
++	private int intervalTime;
++	private long lastSuccessfulTime = 0;
++	
++	private AtomicInteger notificaionSentCount = new AtomicInteger(0);
++	
++	private Object lock = new Object();
++	
++	public ApnsConnectionImpl(SocketFactory factory, String host, int port, int maxRetries, 
++			int maxCacheLength, String name, String connName, int intervalTime, int timeout) {
++		this.factory = factory;
++		this.host = host;
++		this.port = port;
++		this.maxRetries = maxRetries;  
++		this.maxCacheLength = maxCacheLength;
++		this.name = name;
++		this.connName = connName;
++		this.intervalTime = intervalTime;
++		this.readTimeOut = timeout;
++	}
++	
++	@Override
++	public void sendNotification(String token, Payload payload) {
++		PushNotification notification = new PushNotification();
++		notification.setId(IDENTIFIER.incrementAndGet());
++		notification.setExpire(EXPIRE);
++		notification.setToken(token);
++		notification.setPayload(payload);
++		sendNotification(notification);
++	}
++	
++	@Override
++	public void sendNotification(PushNotification notification) {
++		byte[] plBytes = null;
++		String payload = notification.getPayload().toString();
++		try {
++			plBytes = payload.getBytes(CHARSET_ENCODING);
++			if (plBytes.length > PAY_LOAD_MAX_LENGTH) {
++				logger.error("Payload execeed limit, the maximum size allowed is 256 bytes. " + payload);
++				return;
++			}
++		} catch (UnsupportedEncodingException e) {
++			logger.error(e.getMessage(), e);
++			return;
++		}
++		
++		/**
++		 * EN: If error happened before, just wait until the resending work finishes by another thread
++		 *     and close the current socket
++		 * CN: 如果发现当前连接有error-response，加锁等待，直到另外一个线程把重发做完后再继续发送  
++		 */
++		synchronized (lock) {
++			if (errorHappendedLastConn) {
++				closeSocket(socket);
++				socket = null;
++			}
++			byte[] data = notification.generateData(plBytes);
++			boolean isSuccessful = false;
++			int retries = 0;
++			while (retries < maxRetries) {
++				try {
++					boolean exceedIntervalTime = lastSuccessfulTime > 0 && (System.currentTimeMillis() - lastSuccessfulTime) > intervalTime;
++					if (exceedIntervalTime) {
++						closeSocket(socket);
++						socket = null;
++					}
++					
++					if (socket == null || socket.isClosed()) {
++						socket = createNewSocket();
++					}
++					
++					OutputStream socketOs = socket.getOutputStream();
++					socketOs.write(data);
++					socketOs.flush();
++					isSuccessful = true;
++					break;
++				} catch (Exception e) {
++					logger.error(connName + " " + e.getMessage(), e);
++					closeSocket(socket);
++					socket = null;
++				}
++				retries++;
++			}
++			if (!isSuccessful) {
++				logger.error(String.format("%s Notification send failed. %s", connName, notification));
++				return;
++			} else {
++				logger.info(String.format("%s Send success. count: %s, notificaion: %s", connName, 
++						notificaionSentCount.incrementAndGet(), notification));
++				
++				notificationCachedQueue.add(notification);
++				lastSuccessfulTime = System.currentTimeMillis();
++				
++				/** TODO there is a bug, maybe, theoretically.
++				 *  CN: 假如我们发了一条错误的通知，然后又发了 maxCacheLength 条正确的通知。这时APNS服务器
++				 *      才返回第一条通知的error-response。此时，第一条通知已经从队列移除了。。
++				 *      其实后面100条该重发，但却没有。不过这个问题的概率很低，我们还是信任APNS服务器能及时返回
++				 */			
++				if (notificationCachedQueue.size() > maxCacheLength) {
++					notificationCachedQueue.poll();
++				}
++			}
++		}
++
++		if (isFirstWrite) {
++			isFirstWrite = false;
++			/**
++			 * EN: When we create a socket, just a TCP/IP connection created. After we wrote data to the stream,
++			 *     the SSL connection had been created. Now, it's time to read data from InputStream
++			 * CN: createSocket时只建立了TCP连接，还没有进行SSL认证，第一次写完数据后才真正完成认证。所以此时才开始
++			 *     监听InputStream
++			 */
++			startErrorWorker();
++		}
++	}
++	private Socket createNewSocket() throws IOException, UnknownHostException {
++		if (logger.isDebugEnabled()) {
++			logger.debug(connName + " create a new socket.");
++		}
++		isFirstWrite = true;
++		errorHappendedLastConn = false;
++		Socket socket = factory.createSocket(host, port);
++		socket.setSoTimeout(readTimeOut);
++		// enable tcp_nodelay, any data will be sent immediately.
++		socket.setTcpNoDelay(true);
++		
++		return socket;
++	}
++	private void closeSocket(Socket socket) {
++		try {
++			if (socket != null) {
++				socket.close();
++			}
++		} catch (Exception e) {
++			logger.error(e.getMessage(), e);
++		}
++	}
++	private boolean isSocketAlive(Socket socket) {
++		if (socket != null && socket.isConnected()) {
++			return true;
++		}
++		return false;
++	}
++	
++	@Override
++	public void close() throws IOException {
++		closeSocket(socket);
++	}
++	
++	private void startErrorWorker() {
++		Thread thread = new Thread(new Runnable() {
++
++			@Override
++			public void run() {
++				Socket curSocket = socket;
++				try {
++					if (!isSocketAlive(curSocket)) {
++						return;
++					}
++					InputStream socketIs = curSocket.getInputStream();
++					byte[] res = new byte[ERROR_RESPONSE_BYTES_LENGTH];
++					int size = -1;
++					
++					while (true) {
++						try {
++							size = socketIs.read(res);
++							if (size > 0) {
++								// break, only when something was read
++								break;
++							}
++						} catch (SocketTimeoutException e) {
++							// There is no data. Keep reading.
++						}
++					}
++					
++					int command = res[0];
++					/** EN: error-response,close the socket and resent notifications
++					 *  CN: 一旦遇到错误返回就关闭连接，并且重新发送在它之后发送的通知
++					 */			
++					if (size == res.length && command == Command.ERROR) {
++						int status = res[1];
++						int errorId = ApnsTools.parse4ByteInt(res[2], res[3], res[4], res[5]);
++						
++						if (logger.isInfoEnabled()) {
++							logger.info(String.format("%s Received error response. status: %s, id: %s, error-desc: %s", connName, status, errorId, ErrorResponse.desc(status)));
++						}
++						
++						Queue<PushNotification> resentQueue = new LinkedList<PushNotification>();
++
++						synchronized (lock) {
++							boolean found = false;
++							errorHappendedLastConn = true;
++							while (!notificationCachedQueue.isEmpty()) {
++								PushNotification pn = notificationCachedQueue.poll();
++								if (pn.getId() == errorId) {
++									found = true;
++								} else {
++									/**
++									 * https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/CommunicatingWIthAPS.html
++									 * As the document said, add the notifications which need be resent to the queue.
++									 * Igonre the error one
++									 */
++									if (found) {
++										resentQueue.add(pn);
++									}
++								}
++							}
++							if (!found) {
++								logger.warn(connName + " Didn't find error-notification in the queue. Maybe it's time to adjust cache length. id: " + errorId);
++							}
++						}
++						// resend notifications
++						if (!resentQueue.isEmpty()) {
++							ApnsResender.getInstance().resend(name, resentQueue);
++						}
++					} else {
++						// ignore and continue reading
++						logger.error(connName + " Unexpected command or size. commend: " + command + " , size: " + size);
++					}
++				} catch (Exception e) {
++					logger.error(connName + " " + e.getMessage(), e);
++				} finally {
++					/**
++					 * EN: close the old socket although it may be closed once before.
++					 * CN: 介个连接可能已经被关过一次了，再关一下也无妨，万无一失嘛
++					 */
++					closeSocket(curSocket);
++				}
++			}
++		});
++		
++		thread.start();
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionPool.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionPool.java
+new file mode 100644
+index 0000000..c040685
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsConnectionPool.java
+@@ -0,0 +1,100 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.impl;
++
++import java.io.Closeable;
++import java.util.concurrent.BlockingQueue;
++import java.util.concurrent.LinkedBlockingQueue;
++
++import javax.net.SocketFactory;
++
++import org.apache.usergrid.services.notifierServices.apns.IApnsConnection;
++import org.apache.usergrid.services.notifierServices.apns.model.ApnsConfig;
++
++/**
++ * 
++ * @author RamosLi
++ *
++ */
++public class ApnsConnectionPool implements Closeable {
++	
++	// host and port for development environment
++		public static final String HOST_DEVELOPMENT_ENV = "gateway.sandbox.push.apple.com";
++		public static final int PORT_DEVELOPMENT_ENV = 2195;
++		
++		// host and port for production environment
++		public static final String HOST_PRODUCTION_ENV = "gateway.push.apple.com";
++		public static final int PORT_PRODUCTION_ENV = 2195;
++		
++	private static int CONN_ID_SEQ = 1;
++	private SocketFactory factory;
++	private BlockingQueue<IApnsConnection> connQueue = null;
++	
++	private ApnsConnectionPool(ApnsConfig config, SocketFactory factory) {
++		this.factory = factory;
++		
++		String host = HOST_PRODUCTION_ENV;
++		int port = PORT_PRODUCTION_ENV;
++		if (config.isDevEnv()) {
++			host = HOST_DEVELOPMENT_ENV;
++			port = PORT_DEVELOPMENT_ENV;
++		}
++		
++		int poolSize = config.getPoolSize();
++		connQueue = new LinkedBlockingQueue<IApnsConnection>(poolSize);
++		
++		for (int i = 0; i < poolSize; i++) {
++			String connName = (config.isDevEnv() ? "dev-" : "pro-") + CONN_ID_SEQ++;
++			IApnsConnection conn = new ApnsConnectionImpl(this.factory, host, port, config.getRetries(), 
++					config.getCacheLength(), config.getName(), connName, config.getIntervalTime(), config.getTimeout());
++			connQueue.add(conn);
++		}
++	}
++	
++	public IApnsConnection borrowConn() {
++		try {
++			return connQueue.take();
++		} catch (Exception e) {
++			e.printStackTrace();
++		}
++		return null;
++	}
++	
++	public void returnConn(IApnsConnection conn) {
++		if (conn != null) {
++			connQueue.add(conn);
++		}
++	}
++	
++	@Override
++	public void close() {
++		while (!connQueue.isEmpty()) {
++			try {
++				connQueue.take().close();
++			} catch (Exception e) {
++				e.printStackTrace();
++			}
++		}
++	}
++	/**
++	 * create instance
++	 * @param config
++	 * @return
++	 */
++	public static ApnsConnectionPool newConnPool(ApnsConfig config, SocketFactory factory) {
++		return new ApnsConnectionPool(config, factory);
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsFeedbackConnectionImpl.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsFeedbackConnectionImpl.java
+new file mode 100644
+index 0000000..92b3c38
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsFeedbackConnectionImpl.java
+@@ -0,0 +1,103 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.impl;
++
++import java.io.InputStream;
++import java.net.Socket;
++import java.util.ArrayList;
++import java.util.List;
++
++import javax.net.SocketFactory;
++
++import org.apache.usergrid.services.notifierServices.apns.IApnsFeedbackConnection;
++import org.apache.usergrid.services.notifierServices.apns.model.ApnsConfig;
++import org.apache.usergrid.services.notifierServices.apns.model.Feedback;
++import org.apache.usergrid.services.notifierServices.apns.tools.ApnsTools;
++
++/**
++ * @author RamosLi
++ *
++ */
++public class ApnsFeedbackConnectionImpl implements IApnsFeedbackConnection {
++	
++	public static final String FEEDBACK_HOST_DEVELOPMENT_ENV = "feedback.sandbox.push.apple.com";
++	public static final int FEEDBACK_PORT_DEVELOPMENT_ENV = 2196;
++	
++	public static final String FEEDBACK_HOST_PRODUCTION_ENV = "feedback.push.apple.com";
++	public static final int FEEDBACK_PORT_PRODUCTION_ENV = 2196;
++	private static int READ_TIMEOUT = 10000; // 10s
++	private static int DATA_LENGTH = 38;
++	private ApnsConfig config;
++	private SocketFactory factory;
++	public ApnsFeedbackConnectionImpl(ApnsConfig config, SocketFactory factory) {
++		this.config = config;
++		this.factory = factory;
++	}
++
++	@Override
++	public List<Feedback> getFeedbacks() {
++		List<Feedback> list = null;
++		Socket socket = null;
++		try {
++			String host = FEEDBACK_HOST_PRODUCTION_ENV;
++			int port = FEEDBACK_PORT_PRODUCTION_ENV;
++			if (config.isDevEnv()) {
++				host = FEEDBACK_HOST_DEVELOPMENT_ENV;
++				port = FEEDBACK_PORT_DEVELOPMENT_ENV;
++			}
++			socket = factory.createSocket(host, port);
++			socket.setSoTimeout(READ_TIMEOUT);
++			InputStream is = socket.getInputStream();
++			while (true) {
++				byte[] bytes = new byte[DATA_LENGTH];
++				int size = is.read(bytes);
++				if (size == DATA_LENGTH) {
++					if (list == null) {
++						list = new ArrayList<Feedback>();
++					}
++					/**
++					 * see The Feedback Service chapter
++					 * https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/CommunicatingWIthAPS.html
++					 * 
++					 */
++					byte[] tokenByte = new byte[32]; 
++					System.arraycopy(bytes, 6, tokenByte, 0, 32);
++					String token = ApnsTools.encodeHex(tokenByte).toLowerCase();
++					long time = ApnsTools.parse4ByteInt(bytes[0], bytes[1], bytes[2], bytes[3]);
++					Feedback feedback = new Feedback();
++					feedback.setTime(time);
++					feedback.setToken(token);
++					list.add(feedback);
++				} else {
++					break;
++				}
++			}
++			is.close();
++		} catch (Exception e) {
++			e.printStackTrace();
++		} finally {
++			if (socket != null) {
++				try {
++					socket.close();
++				} catch (Exception e2) {
++					e2.printStackTrace();
++				}
++			}
++		}
++		return list;
++	}
++	
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsResender.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsResender.java
+new file mode 100644
+index 0000000..b36f8a6
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsResender.java
+@@ -0,0 +1,48 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.impl;
++
++import java.util.Queue;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.usergrid.services.notifierServices.apns.IApnsService;
++import org.apache.usergrid.services.notifierServices.apns.model.PushNotification;
++
++/**
++ * EN: resend the notifications which sent after an error one using same connection
++ * CN: 重发，没啥好说的
++ * @author RamosLi
++ *
++ */
++public class ApnsResender {
++	private static Log logger = LogFactory.getLog(ApnsResender.class);
++	private static ApnsResender instance = new ApnsResender();
++	public static ApnsResender getInstance() {
++		return instance;
++	}
++	public void resend(String name, Queue<PushNotification> queue) {
++		IApnsService service = ApnsServiceImpl.getCachedService(name);
++		if (service != null) {
++			while (!queue.isEmpty()) {
++				service.sendNotification(queue.poll());
++			}
++		} else {
++			logger.error("Cached service is null. name: " + name);
++		}
++	}
++
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsServiceImpl.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsServiceImpl.java
+new file mode 100644
+index 0000000..104d733
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/impl/ApnsServiceImpl.java
+@@ -0,0 +1,155 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.impl;
++
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.TimeUnit;
++
++import javax.net.SocketFactory;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.usergrid.services.notifierServices.apns.IApnsConnection;
++import org.apache.usergrid.services.notifierServices.apns.IApnsFeedbackConnection;
++import org.apache.usergrid.services.notifierServices.apns.IApnsService;
++import org.apache.usergrid.services.notifierServices.apns.model.ApnsConfig;
++import org.apache.usergrid.services.notifierServices.apns.model.Feedback;
++import org.apache.usergrid.services.notifierServices.apns.model.Payload;
++import org.apache.usergrid.services.notifierServices.apns.model.PushNotification;
++import org.apache.usergrid.services.notifierServices.apns.tools.ApnsTools;
++
++/**
++ * The service should be created twice at most. One for the development env, and the other for the production env
++ * @author RamosLi
++ *
++ */
++public class ApnsServiceImpl implements IApnsService {
++	private static final String KEYSTORE_TYPE = "PKCS12";
++	private static final String ALGORITHM = "sunx509";
++	private static final String PROTOCOL = "TLS";
++	
++	private static Log logger = LogFactory.getLog(ApnsServiceImpl.class);
++	private ExecutorService service = null;
++	private ApnsConnectionPool connPool = null;
++	private IApnsFeedbackConnection feedbackConn = null;
++	private ApnsServiceImpl(ApnsConfig config) {
++		int poolSize = config.getPoolSize();
++		service = Executors.newFixedThreadPool(poolSize);
++		
++		SocketFactory factory = ApnsTools.createSocketFactory(config.getKeyStore(), config.getPassword(), 
++				KEYSTORE_TYPE, ALGORITHM, PROTOCOL);
++		connPool = ApnsConnectionPool.newConnPool(config, factory);
++		feedbackConn = new ApnsFeedbackConnectionImpl(config, factory);
++	}
++	
++	@Override
++	public void sendNotification(final String token, final Payload payload) {
++		service.execute(new Runnable() {
++			@Override
++			public void run() {
++				IApnsConnection conn = null; 
++				try {
++					conn = getConnection();
++					conn.sendNotification(token, payload);
++				} catch (Exception e) {
++					logger.error(e.getMessage(), e);
++				} finally {
++					if (conn != null) {
++						connPool.returnConn(conn);
++					}
++				}
++			}
++		});
++	}
++	@Override
++	public void sendNotification(final PushNotification notification) {
++		service.execute(new Runnable() {
++			@Override
++			public void run() {
++				IApnsConnection conn = null; 
++				try {
++					conn = getConnection();
++					conn.sendNotification(notification);
++				} catch (Exception e) {
++					logger.error(e.getMessage(), e);
++				} finally {
++					if (conn != null) {
++						connPool.returnConn(conn);
++					}
++				}
++			}
++		});
++	}
++	private IApnsConnection getConnection() {
++		IApnsConnection conn = connPool.borrowConn();
++		if (conn == null) {
++			throw new RuntimeException("Can't get apns connection");
++		}
++		return conn;
++	}
++	
++	private static void checkConfig(ApnsConfig config) {
++		System.out.println(config.getKeyStore());
++		if (config == null || config.getKeyStore() == null || config.getPassword() == null || 
++				"".equals(config.getPassword().trim())) {
++			throw new IllegalArgumentException("KeyStore and password can't be null");
++		}
++		if (config.getPoolSize() <= 0 || config.getRetries() <= 0 || config.getCacheLength() <= 0) {
++			throw new IllegalArgumentException("poolSize,retry, cacheLength must be positive");
++		}
++	}
++	private static Map<String, IApnsService> serviceCacheMap = new HashMap<String, IApnsService>(3);
++	public static IApnsService getCachedService(String name) {
++		return serviceCacheMap.get(name);
++	}
++	public static IApnsService createInstance(ApnsConfig config) {
++		checkConfig(config);
++		String name = config.getName();
++		IApnsService service = getCachedService(name);
++		if (service == null) {
++			synchronized (name.intern()) {
++				service = getCachedService(name);
++				if (service == null) {
++					service = new ApnsServiceImpl(config);
++					serviceCacheMap.put(name, service);
++				}
++			}
++		}
++		return service;
++	}
++
++	@Override
++	public void shutdown() {
++		service.shutdown();
++		try {
++			service.awaitTermination(10, TimeUnit.SECONDS);
++        } catch (InterruptedException e) {
++            logger.warn("Shutdown ApnsService interrupted", e);
++        }
++        connPool.close();
++	}
++
++	@Override
++	public List<Feedback> getFeedbacks() {
++		return feedbackConn.getFeedbacks();
++	}
++
++	
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConfig.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConfig.java
+new file mode 100644
+index 0000000..57472e4
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConfig.java
+@@ -0,0 +1,139 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++import java.io.InputStream;
++
++/**
++ * @author RamosLi
++ *
++ */
++public class ApnsConfig {
++	private String name;
++	/**
++	 * inputstrem of your certificate file
++	 */
++	private InputStream keyStore;
++	
++	private String password;
++	
++	/**
++	 * true:  development environment
++	 * false: production environment 
++	 */
++	private boolean isDevEnv = false;
++	/**
++	 * connection pool size.
++	 */
++	private int poolSize = 3;
++	/**
++	 * the length of the notification cache size. 
++	 * It's used for resending notifications when an error response detected
++	 */
++	private int cacheLength = 100;
++	/**
++	 * max retry times when sending a notification 
++	 */
++	private int retries = 3;
++	
++	/**
++	 * EN: The APNS gateway has a CONNECTION_IDLE_TIME, with my experience, it's two hours. 
++	 *     So if the interval time of two notifications is more than 30 minutes(default), create new socket.
++	 * CN: 根据哥的经验，APNS服务器连接的idle时间为两小时，判断下，如果两条通知的间隔时间超过30分钟，就重新建立连接
++	 *     一个连接空闲2小时后，用netstat查看，会处于CLOSE_WAIT状态，但应用层可能并不知道。此时再发通知已经发不出去了，所以需要重连
++	 * 
++	 * TODO This client will support auto closing connection which is idle for a specific time.
++	 */
++	private int intervalTime = 30 * 60 * 1000; // 30 minutes
++	
++	// socket read timeout
++	private int timeout = 10 * 1000; // 10 seconds
++	
++	public InputStream getKeyStore() {
++		return keyStore;
++	}
++	
++	public void setKeyStore(String keystore) {
++		InputStream is = ApnsConfig.class.getClassLoader().getResourceAsStream(keystore);
++		if (is == null) {
++			throw new IllegalArgumentException("Keystore file not found. " + keystore);
++		}
++		setKeyStore(is);
++	}
++	
++	public void setKeyStore(InputStream keyStore) {
++		this.keyStore = keyStore;
++	}
++	public String getPassword() {
++		return password;
++	}
++	public void setPassword(String password) {
++		this.password = password;
++	}
++	public boolean isDevEnv() {
++		return isDevEnv;
++	}
++	public void setDevEnv(boolean isDevEnv) {
++		this.isDevEnv = isDevEnv;
++	}
++	public int getPoolSize() {
++		return poolSize;
++	}
++	public void setPoolSize(int poolSize) {
++		this.poolSize = poolSize;
++	}
++	public int getCacheLength() {
++		return cacheLength;
++	}
++	public void setCacheLength(int cacheLength) {
++		this.cacheLength = cacheLength;
++	}
++	public int getRetries() {
++		return retries;
++	}
++	public void setRetries(int retries) {
++		this.retries = retries;
++	}
++	public String getName() {
++		if (name == null || "".equals(name.trim())) {
++			if (isDevEnv()) {
++				return "dev-env";
++			} else {
++				return "product-env";
++			}
++		}
++		return name;
++	}
++//	public void setName(String name) {
++//		this.name = name;
++//	}
++
++	public int getIntervalTime() {
++		return intervalTime;
++	}
++
++	public void setIntervalTime(int intervalTime) {
++		this.intervalTime = intervalTime;
++	}
++
++	public int getTimeout() {
++		return timeout;
++	}
++
++	public void setTimeout(int timeout) {
++		this.timeout = timeout;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConstants.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConstants.java
+new file mode 100644
+index 0000000..447e889
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ApnsConstants.java
+@@ -0,0 +1,46 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++/**
++ * @author RamosLi
++ *
++ */
++public class ApnsConstants {
++	// host and port for development environment
++	public static final String HOST_DEVELOPMENT_ENV = "gateway.sandbox.push.apple.com";
++	public static final int PORT_DEVELOPMENT_ENV = 2195;
++	
++	// host and port for production environment
++	public static final String HOST_PRODUCTION_ENV = "gateway.push.apple.com";
++	public static final int PORT_PRODUCTION_ENV = 2195;
++	
++	public static final String FEEDBACK_HOST_DEVELOPMENT_ENV = "feedback.sandbox.push.apple.com";
++	public static final int FEEDBACK_PORT_DEVELOPMENT_ENV = 2196;
++	
++	public static final String FEEDBACK_HOST_PRODUCTION_ENV = "feedback.push.apple.com";
++	public static final int FEEDBACK_PORT_PRODUCTION_ENV = 2196;
++	
++	public static final String KEYSTORE_TYPE = "PKCS12";
++	public static final String ALGORITHM = "sunx509";
++	public static final String PROTOCOL = "TLS";
++	
++	public static final int ERROR_RESPONSE_BYTES_LENGTH = 6;
++	
++	public static final int PAY_LOAD_MAX_LENGTH = 256;
++	
++	public static final String CHARSET_ENCODING = "UTF-8";
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Command.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Command.java
+new file mode 100644
+index 0000000..a17166e
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Command.java
+@@ -0,0 +1,29 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++/**
++ * @author RamosLi
++ * 
++ */
++public class Command {
++	
++	public static final int SEND = 1;
++	
++	public static final int SEND_V2 = 2;
++	
++	public static final int ERROR = 8;
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ErrorResponse.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ErrorResponse.java
+new file mode 100644
+index 0000000..ea65fc8
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/ErrorResponse.java
+@@ -0,0 +1,59 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++public class ErrorResponse {
++	public static final int ERROR_CODE_NO_ERRORS = 0;
++	public static final int ERROR_CODE_PROCESSING_ERROR = 1;
++	public static final int ERROR_CODE_MISSING_TOKEN = 2;
++	public static final int ERROR_CODE_MISSING_TOPIC = 3;
++	public static final int ERROR_CODE_MISSING_PAYLOAD = 4;
++	public static final int ERROR_CODE_INVALID_TOKEN_SIZE = 5;
++	public static final int ERROR_CODE_INVALID_TOPIC_SIZE = 6;
++	public static final int ERROR_CODE_INVALID_PAYLOAD_SIZE = 7;
++	public static final int ERROR_CODE_INVALID_TOKEN = 8;
++	public static final int ERROR_CODE_SHUTDOWN = 10;
++	public static final int ERROR_CODE_NONE = 255;
++	
++	public static String desc(int code) {
++		String desc = null;
++		switch (code) {
++		case ERROR_CODE_NO_ERRORS:
++			desc = "No errors encountered"; break;
++		case ERROR_CODE_PROCESSING_ERROR:
++			desc = "Processing error"; break;
++		case ERROR_CODE_MISSING_TOKEN:
++			desc = "Missing device token"; break;
++		case ERROR_CODE_MISSING_TOPIC:
++			desc = "Missing topic"; break;
++		case ERROR_CODE_MISSING_PAYLOAD:
++			desc = "Missing payload"; break;
++		case ERROR_CODE_INVALID_TOKEN_SIZE:
++			desc = "Invalid token size"; break;
++		case ERROR_CODE_INVALID_TOPIC_SIZE:
++			desc = "Invalid topic size"; break;
++		case ERROR_CODE_INVALID_PAYLOAD_SIZE:
++			desc = "Invalid payload size"; break;
++		case ERROR_CODE_INVALID_TOKEN:
++			desc = "Invalid token"; break;
++		case ERROR_CODE_SHUTDOWN:
++			desc = "Shutdown"; break;
++		default:
++			desc = "Unkown"; break;
++		}
++		return desc;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Feedback.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Feedback.java
+new file mode 100644
+index 0000000..794e3bf
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Feedback.java
+@@ -0,0 +1,51 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++import java.util.Date;
++
++/**
++ * https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/CommunicatingWIthAPS.html
++ * @author RamosLi
++ *
++ */
++public class Feedback {
++	/**
++	 * A timestamp indicating when APNs determined that the application no longer exists on the device.
++	 * This value represents the seconds since 12:00 midnight on January 1, 1970 UTC.
++	 */
++	private long time;
++	/**
++	 * The device token
++	 */
++	private String token;
++	
++	public long getTime() {
++		return time;
++	}
++	public void setTime(long time) {
++		this.time = time;
++	}
++	public String getToken() {
++		return token;
++	}
++	public void setToken(String token) {
++		this.token = token;
++	}
++	public Date getDate() {
++		return new Date(getTime() * 1000);
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/FrameItem.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/FrameItem.java
+new file mode 100644
+index 0000000..6b2b505
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/FrameItem.java
+@@ -0,0 +1,66 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++/**
++ * @author RamosLi
++ * For more details:
++ *   https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/CommunicatingWIthAPS.html
++ */
++public class FrameItem {
++	/* 
++	 * Item Id, Item Name, Length
++	 * 1, Device token,             32 bytes
++	 * 2, Payload,                  <=256 bytes
++	 * 3, Notification identifier,  4 bytes
++	 * 4, Expiration date,          4 bytes
++	 * 5, Priority,                 1 bytes
++	 */
++	public static final int ITEM_ID_DEVICE_TOKEN = 1;
++	public static final int ITEM_ID_PAYLOAD= 2;
++	public static final int ITEM_ID_NOTIFICATION_IDENTIFIER = 3;
++	public static final int ITEM_ID_EXPIRATION_DATE = 4;
++	public static final int ITEM_ID_PRIORITY = 5;
++	
++	private int itemId; // 1 byte
++	private int itemLength; // 2 bytes
++	private byte[] itemData;
++	
++	public FrameItem(int itemId, byte[] itemData) {
++		this.itemId = itemId;
++		this.itemData = itemData;
++		this.itemLength = itemData.length;
++	}
++	
++	public int getItemId() {
++		return itemId;
++	}
++	public void setItemId(int itemId) {
++		this.itemId = itemId;
++	}
++	public int getItemLength() {
++		return itemLength;
++	}
++	public void setItemLength(int itemLength) {
++		this.itemLength = itemLength;
++	}
++	public byte[] getItemData() {
++		return itemData;
++	}
++	public void setItemData(byte[] itemData) {
++		this.itemData = itemData;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Payload.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Payload.java
+new file mode 100644
+index 0000000..a7f25cb
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/Payload.java
+@@ -0,0 +1,173 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++import java.util.HashMap;
++import java.util.Map;
++import java.util.Map.Entry;
++
++import org.json.simple.JSONArray;
++import org.json.simple.JSONObject;
++
++/**
++ * @author RamosLi
++ * For more details, view the following site:
++ *   https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/ApplePushService.html
++ */
++public class Payload {
++	private static final String APS = "aps";
++	private Map<String, Object> params;
++	private String alert;
++	private Integer badge;
++	private String sound = "";
++	private Integer contentAvailable;
++	
++	private String alertBody;
++	private String alertActionLocKey;
++	private String alertLocKey;
++	private String[] alertLocArgs;
++	private String alertLaunchImage;
++	
++	public Map<String, Object> getParams() {
++		return params;
++	}
++	public void setParams(Map<String, Object> params) {
++		this.params = params;
++	}
++	public void addParam(String key, Object obj) {
++		if (params == null) {
++			params = new HashMap<String, Object>();
++		}
++		if (APS.equalsIgnoreCase(key)) {
++			throw new IllegalArgumentException("the key can't be aps");
++		}
++		params.put(key, obj);
++	}
++	
++	public String getAlert() {
++		return alert;
++	}
++	public void setAlert(String alert) {
++		this.alert = alert;
++	}
++	public Integer getBadge() {
++		return badge;
++	}
++	public void setBadge(Integer badge) {
++		this.badge = badge;
++	}
++	public String getSound() {
++		return sound;
++	}
++	public void setSound(String sound) {
++		this.sound = sound;
++	}
++	
++	@SuppressWarnings("unchecked")
++	@Override
++	public String toString() {
++		JSONObject object = new JSONObject();
++		JSONObject apsObj = new JSONObject();
++		if (getAlert() != null) {
++			apsObj.put("alert", getAlert());
++			apsObj.put("body", getAlertBody());
++		} else {
++			if (getAlertBody() != null || getAlertLocKey() != null) {
++				JSONObject alertObj = new JSONObject();
++				putIntoJson("body", getAlertBody(), alertObj);
++				putIntoJson("action-loc-key", getAlertActionLocKey(), alertObj);
++				putIntoJson("loc-key", getAlertLocKey(), alertObj);
++				putIntoJson("launch-image", getAlertLaunchImage(), alertObj);
++				if (getAlertLocArgs() != null) {
++					JSONArray array = new JSONArray();
++					for (String str : getAlertLocArgs()) {
++						array.add(str);
++					}
++					alertObj.put("loc-args", array);
++				}
++				apsObj.put("alert", alertObj);
++			}
++		}
++		
++		if (getBadge() != null) {
++			apsObj.put("badge", getBadge().intValue());
++		}
++		//putIntoJson("sound", getSound(), apsObj);
++		
++		if (getContentAvailable() != null) {
++			apsObj.put("content-available", getContentAvailable().intValue());
++		}
++		
++		object.put(APS, apsObj);
++		if (getParams() != null) {
++			for (Entry<String, Object> e : getParams().entrySet()) {
++				object.put(e.getKey(), e.getValue());
++			}
++		}
++		return object.toString();
++	}
++	@SuppressWarnings("unchecked")
++	private void putIntoJson(String key, String value, JSONObject obj) {
++		if (value != null) {
++			obj.put(key, value);
++		}
++	}
++	public static void main(String[] args) {
++		Payload payload = new Payload();
++		payload.setAlert("How are you?");
++		payload.setBadge(1);
++		payload.setSound("a");
++		payload.addParam("para1", "1231dfasfwer");
++		payload.addParam("number", 12312312312L);
++		System.out.println(payload.toString());
++	}
++	public String getAlertBody() {
++		return alertBody;
++	}
++	public void setAlertBody(String alertBody) {
++		this.alertBody = alertBody;
++	}
++	public String getAlertActionLocKey() {
++		return alertActionLocKey;
++	}
++	public void setAlertActionLocKey(String alertActionLocKey) {
++		this.alertActionLocKey = alertActionLocKey;
++	}
++	public String getAlertLocKey() {
++		return alertLocKey;
++	}
++	public void setAlertLocKey(String alertLocKey) {
++		this.alertLocKey = alertLocKey;
++	}
++	public String getAlertLaunchImage() {
++		return alertLaunchImage;
++	}
++	public void setAlertLaunchImage(String alertLaunchImage) {
++		this.alertLaunchImage = alertLaunchImage;
++	}
++	public String[] getAlertLocArgs() {
++		return alertLocArgs;
++	}
++	public void setAlertLocArgs(String[] alertLocArgs) {
++		this.alertLocArgs = alertLocArgs;
++	}
++	public Integer getContentAvailable() {
++		return contentAvailable;
++	}
++	public void setContentAvailable(Integer contentAvailable) {
++		this.contentAvailable = contentAvailable;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/PushNotification.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/PushNotification.java
+new file mode 100644
+index 0000000..cc67d19
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/model/PushNotification.java
+@@ -0,0 +1,100 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.model;
++
++import java.util.LinkedList;
++import java.util.List;
++
++import org.apache.usergrid.services.notifierServices.apns.tools.ApnsTools;
++
++
++
++
++
++public class PushNotification {
++	/*
++	 * The notification’s priority. Provide one of the following values:
++    	(1) 10    The push message is sent immediately.
++    	The push notification must trigger an alert, sound, or badge on the device. 
++    	It is an error to use this priority for a push that contains only the content-available key.
++    	
++    	(2)5    The push message is sent at a time that conserves power on the device receiving it.
++	 */
++	public static final int PRIORITY_SENT_IMMEDIATELY = 10;
++	public static final int PRIORITY_SENT_A_TIME = 5;
++	
++	private int id;
++	private int expire;
++	private String token;
++	private Payload payload;
++	private int priority = PRIORITY_SENT_IMMEDIATELY;
++	
++	public int getId() {
++		return id;
++	}
++	public void setId(int id) {
++		this.id = id;
++	}
++	public int getExpire() {
++		return expire;
++	}
++	public void setExpire(int expire) {
++		this.expire = expire;
++	}
++	public String getToken() {
++		return token;
++	}
++	public void setToken(String token) {
++		this.token = token;
++	}
++	public Payload getPayload() {
++		return payload;
++	}
++	public void setPayload(Payload payload) {
++		this.payload = payload;
++	}
++	/**
++	 * We need to check the size of payload. 
++	 * After checking, reuse it in order to avoid calculate bytes array twice although it seems not perfect
++	 * @param payloads
++	 * @return
++	 */
++	public byte[] generateData(byte[] payloads) {
++		byte[] tokens = ApnsTools.decodeHex(getToken());
++		List<FrameItem> list = new LinkedList<FrameItem>();
++		list.add(new FrameItem(FrameItem.ITEM_ID_DEVICE_TOKEN, tokens));
++		list.add(new FrameItem(FrameItem.ITEM_ID_PAYLOAD, payloads));
++		list.add(new FrameItem(FrameItem.ITEM_ID_NOTIFICATION_IDENTIFIER, ApnsTools.intToBytes(getId(), 4)));
++		list.add(new FrameItem(FrameItem.ITEM_ID_EXPIRATION_DATE, ApnsTools.intToBytes(getExpire(), 4)));
++		list.add(new FrameItem(FrameItem.ITEM_ID_PRIORITY, ApnsTools.intToBytes(getPriority(), 1)));
++//		return ApnsTools.generateData(getId(), getExpire(), tokens, payloads);
++		return ApnsTools.generateData(list);
++	}
++	@Override
++	public String toString() {
++		StringBuilder sb = new StringBuilder();
++		sb.append("id="); sb.append(getId());
++		sb.append(" token="); sb.append(getToken());
++		sb.append(" payload="); sb.append(getPayload().toString());
++		return sb.toString();
++	}
++	public int getPriority() {
++		return priority;
++	}
++	public void setPriority(int priority) {
++		this.priority = priority;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/tools/ApnsTools.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/tools/ApnsTools.java
+new file mode 100644
+index 0000000..1c22437
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/apns/tools/ApnsTools.java
+@@ -0,0 +1,147 @@
++/*
++ * Copyright 2013 DiscoveryBay Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.apns.tools;
++
++import java.io.ByteArrayOutputStream;
++import java.io.DataOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.security.KeyStore;
++import java.util.List;
++
++import javax.net.SocketFactory;
++import javax.net.ssl.KeyManagerFactory;
++import javax.net.ssl.SSLContext;
++import javax.net.ssl.TrustManagerFactory;
++
++import org.apache.usergrid.services.notifierServices.apns.model.Command;
++import org.apache.usergrid.services.notifierServices.apns.model.FrameItem;
++
++
++/**
++ * @author RamosLi
++ *
++ */
++public class ApnsTools {
++	public static byte[] generateData(List<FrameItem> list) {
++		ByteArrayOutputStream bos = new ByteArrayOutputStream();
++		DataOutputStream os = new DataOutputStream(bos);
++		int frameLength = 0;
++		for (FrameItem item : list) {
++			// itemId length = 1, itemDataLength = 2
++			frameLength += 1 + 2 + item.getItemLength();
++		}
++		try {
++			os.writeByte(Command.SEND_V2);
++			os.writeInt(frameLength);
++			for (FrameItem item : list) {
++				os.writeByte(item.getItemId());
++				os.writeShort(item.getItemLength());
++				os.write(item.getItemData());
++			}
++			return bos.toByteArray();
++		} catch (IOException e) {
++			e.printStackTrace();
++		}
++		throw new RuntimeException();
++	}
++	
++	@Deprecated
++	public static byte[] generateData(int id, int expire, byte[] token, byte[] payload) {
++		ByteArrayOutputStream bos = new ByteArrayOutputStream();
++		DataOutputStream os = new DataOutputStream(bos);
++		try {
++			os.writeByte(Command.SEND);
++			os.writeInt(id);
++			os.writeInt(expire);
++			os.writeShort(token.length);
++			os.write(token);
++			os.writeShort(payload.length);
++			os.write(payload);
++			os.flush();
++			return bos.toByteArray();
++		} catch (IOException e) {
++			e.printStackTrace();
++		}
++		throw new RuntimeException();
++	}
++	private static String[] hexArr = new String[]{"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
++	public static String encodeHex(byte[] bytes) {
++		StringBuilder sb = new StringBuilder();
++		for (byte b : bytes) {
++			sb.append(hexArr[(b >> 4) & 0x0F]);
++			sb.append(hexArr[b & 0x0F]);
++		}
++		return sb.toString();
++	}
++	
++	public static byte[] decodeHex(String hex) {
++		byte[] bytes = new byte[hex.length() / 2];
++		for (int i = 0; i < bytes.length; i++) {
++			bytes[i] = (byte)((hexCharIndex(hex.charAt(2 * i)) << 4) | hexCharIndex(hex.charAt(2 * i + 1)));
++		}
++		return bytes;
++	}
++	
++	/**
++	 * @param hex
++	 * @return 0---15
++	 */
++	private static int hexCharIndex(char hex) {
++		int index = 0;
++		if (hex >= '0' && hex <= '9') {
++			index = hex - '0';
++		} else if (hex >= 'a' && hex <= 'f') {
++			index = hex - 'a' + 10;
++		} else if (hex >= 'A' && hex <= 'F') {
++			index = hex - 'A' + 10;
++		} else {
++			throw new IllegalArgumentException("Invalid hex char. " + hex);
++		}
++		return index;
++	}
++	public static int parse4ByteInt(byte b1, byte b2, byte b3, byte b4) {
++		return ((b1 << 24) & 0xFF000000) | ((b2 << 16) & 0x00FF0000) | ((b3 << 8) & 0x0000FF00) | (b4 & 0x000000FF);
++	}
++	public static SocketFactory createSocketFactory(InputStream keyStore, String password, 
++			String keystoreType, String algorithm, String protocol) {
++		try {
++			char[] pwdChars = password.toCharArray();
++			KeyStore ks = KeyStore.getInstance(keystoreType);
++			ks.load(keyStore, pwdChars);
++			KeyManagerFactory kf = KeyManagerFactory.getInstance(algorithm);
++			kf.init(ks, pwdChars);
++			
++			TrustManagerFactory tmf = TrustManagerFactory.getInstance(algorithm);
++	        tmf.init((KeyStore)null);
++	        SSLContext context = SSLContext.getInstance(protocol);
++			context.init(kf.getKeyManagers(), tmf.getTrustManagers(), null);
++			
++			return context.getSocketFactory();
++		} catch (Exception e) {
++			e.printStackTrace();
++		}
++		throw new RuntimeException("Can't create socketFactory.");
++	}
++	// All data is specified in network order, that is big endian.
++	public static byte[] intToBytes(int num, int resultBytesCount) {
++		byte[] ret = new byte[resultBytesCount];
++		for (int i = 0; i < resultBytesCount; i++) {
++			ret[i] = (byte)((num >> ((resultBytesCount - 1 - i) * 8)) & 0xFF);
++		}
++		return ret;
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/gcm/GoogleNotificationService.java b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/gcm/GoogleNotificationService.java
+new file mode 100644
+index 0000000..f027104
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifierServices/gcm/GoogleNotificationService.java
+@@ -0,0 +1,137 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifierServices.gcm;
++
++import java.io.OutputStream;
++import java.net.HttpURLConnection;
++import java.net.URL;
++import java.rmi.server.UID;
++import java.text.DateFormat;
++import java.text.SimpleDateFormat;
++import java.util.Date;
++import java.util.List;
++
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
++import org.apache.usergrid.services.notifierServices.IMessageSender;
++import org.json.simple.JSONArray;
++import org.json.simple.JSONObject;
++
++/*This class provides service for google cloud messaging. */
++
++public class GoogleNotificationService{
++	private final GoogleNotifier notifier;
++	private String messagePayload;
++	private static final String BASE_URL = "https://android.googleapis.com/gcm/send";
++	private List<String> devicesIds;
++	private String deviceId;
++
++	public GoogleNotificationService(final GoogleNotifier notifier,
++			String messagePayload, List<String> devicesIds) {
++		this.notifier = notifier;
++		this.messagePayload = messagePayload;
++		this.devicesIds = devicesIds;
++	}
++
++	public GoogleNotificationService(final GoogleNotifier notifier,
++			String messagePayload, String deviceId) {
++		this.notifier = notifier;
++		this.messagePayload = messagePayload;
++		this.deviceId = deviceId;
++	}
++
++	public Integer executeHTTPSConnectionBuilder() {
++		Integer responseCode = 0;
++		try {
++			URL url = new URL(BASE_URL);
++			responseCode = post(getPostHTTPConnection(url, "application/json"),
++					getJSONPayload());
++
++		} catch (Exception exception) {
++		}
++		return responseCode;
++	}
++
++	private HttpURLConnection getPostHTTPConnection(URL url, String contentType)
++			throws Exception {
++		HttpURLConnection httpURLConnection = (HttpURLConnection) url
++				.openConnection();
++		httpURLConnection.setRequestMethod("POST");
++
++		if (!contentType.isEmpty())
++			httpURLConnection.setRequestProperty("Content-Type", contentType);
++
++		httpURLConnection.setRequestProperty("Authorization", " key="
++				+ notifier.getApiKey());
++
++		httpURLConnection.setDoOutput(true);
++		httpURLConnection.setUseCaches(false);
++
++		return httpURLConnection;
++	}
++
++	private Integer post(HttpURLConnection httpURLConnection,
++			JSONObject jsonObject) {
++		Integer responseCode = 0;
++		OutputStream outputStream = null;
++		try {
++			outputStream = httpURLConnection.getOutputStream();
++			outputStream.write(jsonObject.toString().getBytes());
++			responseCode = httpURLConnection.getResponseCode();
++		} catch (Exception exception) {
++		} finally {
++			if (outputStream != null) {
++				try {
++					outputStream.close();
++				} catch (Exception e) {
++				}
++			}
++		}
++		return responseCode;
++	}
++
++	@SuppressWarnings("unchecked")
++	private JSONObject getJSONPayload() {
++		JSONObject jsonObject = new JSONObject();
++		JSONArray jsonArray = new JSONArray();
++		JSONObject subJsonObject2 = new JSONObject();
++		subJsonObject2.put("score","4x8");	
++		subJsonObject2.put("time",getTime());
++		subJsonObject2.put("message",messagePayload);
++		if(devicesIds!=null && devicesIds.size()>0){
++			for(String deviceId:devicesIds)
++				jsonArray.add(deviceId);			
++		}
++		else{			
++			jsonArray.add(deviceId);			
++		}
++		jsonObject.put("registration_ids",jsonArray);		
++		jsonObject.put("collapse_key",new UID().toString());
++		jsonObject.put("data",subJsonObject2);
++		
++		System.out.println(jsonObject.toString());
++		
++		return jsonObject;	
++	}
++
++	private String getTime() {
++		DateFormat dateFormat = new SimpleDateFormat("HH:mm");
++		Date date = new Date();
++
++		return dateFormat.format(date);
++	}
++}
+\ No newline at end of file
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/notifiers/NotifiersServiceProvider.java b/stack/services/src/main/java/org/apache/usergrid/services/notifiers/NotifiersServiceProvider.java
+new file mode 100644
+index 0000000..1c5cbbf
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/notifiers/NotifiersServiceProvider.java
+@@ -0,0 +1,112 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.notifiers;
++
++import static org.apache.usergrid.services.ServiceParameter.parameters;
++
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++
++import org.apache.usergrid.persistence.Entity;
++import org.apache.usergrid.persistence.EntityManager;
++import org.apache.usergrid.persistence.EntityManagerFactory;
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.AppleNotifier;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
++import org.apache.usergrid.services.ServiceAction;
++import org.apache.usergrid.services.ServiceManager;
++import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.ServicePayload;
++import org.apache.usergrid.services.ServiceResults;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.beans.factory.annotation.Autowired;
++
++public class NotifiersServiceProvider {
++
++	
++	private static final Logger logger = LoggerFactory
++			.getLogger(NotifiersServiceProvider.class);
++	
++	
++	protected EntityManagerFactory emf;
++	protected ServiceManagerFactory smf;
++
++	@Autowired
++	public void setEntityManagerFactory(EntityManagerFactory emf) {
++		logger.info("NotifiersServiceProvider.setEntityManagerFactory");
++		this.emf = emf;
++	}
++
++	@Autowired
++	public void setServiceManagerFactory(ServiceManagerFactory smf) {
++		logger.info("NotifiersServiceProvider.setServiceManagerFactory");
++		this.smf = smf;
++	}
++	
++	
++	
++	public Map<String, EntityNotifier> getAllNotifiers(UUID appId) {
++		Map<String, EntityNotifier> notifiers = new HashMap<String, EntityNotifier>();
++		try {
++			EntityManager entityManager = emf.getEntityManager(appId);
++			ServiceManager serviceManager = smf.getServiceManager(appId);
++			ServiceResults serviceResults = serviceManager.newRequest(
++					ServiceAction.GET, parameters("notifiers")).execute();
++			List<Entity> resultEntities = serviceResults.getEntities();
++
++			for (Entity entity : resultEntities) {
++				if (entity.getName().equals("apple")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), AppleNotifier.class));
++				} else if (entity.getName().equals("google")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), GoogleNotifier.class));
++				}
++			}
++
++		} catch (Exception e) {
++			e.printStackTrace();
++		}
++
++		return notifiers;
++	}
++
++	public EntityNotifier getNotifier(UUID appId, String notifierName)
++			throws Exception {
++		Map<String, EntityNotifier> notifiers = getAllNotifiers(appId);
++		if (notifiers.containsKey(notifierName)) {
++			return notifiers.get(notifierName);
++		} else {
++			return null;
++		}
++	}
++
++
++	public EntityNotifier updateNotifier(UUID appId, String notifierName,
++			ServicePayload servicePayload) throws Exception {
++		ServiceManager serviceManager = smf.getServiceManager(appId);
++
++		serviceManager.newRequest(ServiceAction.PUT,
++				parameters("notifiers", notifierName), servicePayload)
++				.execute();
++
++		return getNotifier(appId, notifierName);
++	}
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/push/PushService.java b/stack/services/src/main/java/org/apache/usergrid/services/push/PushService.java
+new file mode 100644
+index 0000000..7931f0a
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/push/PushService.java
+@@ -0,0 +1,54 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.push;
++
++import java.util.List;
++import java.util.UUID;
++
++import org.apache.usergrid.persistence.entities.Device;
++import org.apache.usergrid.persistence.entities.User;
++
++
++public interface PushService {
++	/**
++	    * Send the push notification to the device
++	    * @param message 
++	    *     message as a JSON String 
++	    * @throws Exception 
++	    */
++	
++		public void sendPush(String jsonInput, List<Device> deviceList, UUID appid) throws Exception;
++	
++	    public void sendNotification(String message,UUID appId) throws Exception;
++	    
++	    public void sendNotificationByGroups(String jsonInput,UUID appliUuid)throws Exception;
++	    
++	    public void sendNotificationByDevices(String jsonInput,UUID appliUuid)throws Exception;
++	    
++	    public void sendNotificationByUsers(String jsonInput,UUID appliUuid,List<String> usersnamesList)throws Exception;
++	    
++	    public void sendNotificationByApp(String jsonInput,UUID appliUuid)throws Exception;
++	    
++	    public void sendNotificationByDeviceId(String jsonInput,UUID appliUuid,UUID devicesUUID)throws Exception;
++	    
++	    public void sendNotificationByGroupName(String jsonInput,UUID appliUuid,String groupName)throws Exception;
++	    
++	    public void sendNotificationByUsername(String jsonInput,UUID appliUuid,String username)throws Exception;	
++	    
++	    
++	    
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/push/PushServiceImpl.java b/stack/services/src/main/java/org/apache/usergrid/services/push/PushServiceImpl.java
+new file mode 100644
+index 0000000..0d3d8e0
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/services/push/PushServiceImpl.java
+@@ -0,0 +1,377 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.services.push;
++
++import static org.apache.usergrid.services.ServiceParameter.parameters;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.UUID;
++
++import org.apache.usergrid.persistence.Entity;
++import org.apache.usergrid.persistence.EntityManager;
++import org.apache.usergrid.persistence.EntityManagerFactory;
++import org.apache.usergrid.persistence.EntityNotifier;
++import org.apache.usergrid.persistence.entities.Device;
++import org.apache.usergrid.persistence.entities.User;
++import org.apache.usergrid.services.ServiceAction;
++import org.apache.usergrid.services.ServiceManager;
++import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.ServiceResults;
++import org.apache.usergrid.services.notifierServices.IMessageSender;
++import org.apache.usergrid.services.notifierServices.MessageSender;
++import org.apache.usergrid.services.notifiers.NotifiersServiceProvider;
++import org.json.JSONArray;
++import org.json.JSONException;
++import org.json.JSONObject;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.beans.factory.annotation.Autowired;
++
++public class PushServiceImpl implements PushService {
++	private static final Logger logger = LoggerFactory
++			.getLogger(PushServiceImpl.class);
++
++	protected EntityManagerFactory emf;
++	protected ServiceManagerFactory smf;
++	protected NotifiersServiceProvider nsp;	
++
++	@Autowired
++	public void setEntityManagerFactory(EntityManagerFactory emf) {
++		logger.info("PushServiceImpl.setEntityManagerFactory");
++		this.emf = emf;
++	}
++
++	@Autowired
++	public void setServiceManagerFactory(ServiceManagerFactory smf) {
++		logger.info("PushServiceImpl.setServiceManagerFactory");
++		this.smf = smf;
++	}
++
++	@Autowired
++	public void setNotifierService(NotifiersServiceProvider nsp) {
++		logger.info("NotifierServiceImpl.NotifiersServiceProvider");
++		this.nsp = nsp;
++	}
++    
++    /**
++     * Method to initialize the notifiers and send the push notification to list of devices
++     */
++	@Override
++    public void sendPush(String jsonInput, List<Device> deviceList, UUID appid) throws Exception {
++        if (deviceList != null && !deviceList.isEmpty()) {
++            EntityNotifier appleNotifier = nsp.getNotifier(appid, "apple");
++            EntityNotifier androidNotifier = nsp.getNotifier(appid, "google");
++            MessageSender messageSenderInstance = MessageSender.getMessageSenderInstance(appleNotifier,androidNotifier);
++            IMessageSender messageSender = null;
++            
++            for (Device d : deviceList) {
++                System.out.println("DEVICE :" + d.getPlatform() + " : "
++                                   + d.getName() + " : " + d.getToken());
++                messageSender = messageSenderInstance.getSenderInstance(d);
++                if(messageSender!=null)
++                    messageSender.sendPushNotification(getMessage(jsonInput),getBody(jsonInput));
++            }
++        }
++    }
++    
++	/**
++	 * Override method for push request.
++	 */
++	@Override
++	public void sendNotification(String jsonInput, UUID appid) throws Exception {
++		List<Device> deviceList = getUserDevices(appid, getUserName(jsonInput));
++		sendPush(jsonInput, deviceList, appid);
++	}
++
++	/**
++	 * Get the device list related to the application and the user.
++	 * 
++	 * @param applicationId
++	 *            application ID
++	 * @param username
++	 *            Username of the user
++	 * @return
++	 */
++	private List<Device> getUserDevices(UUID applicationId, String username)
++			throws Exception {
++
++		EntityManager em = emf.getEntityManager(applicationId);
++		List<Device> devices = new ArrayList<Device>();
++		ServiceManager sm = smf.getServiceManager(applicationId);
++		ServiceResults srq = null;
++		srq = sm.newRequest(ServiceAction.GET,
++				parameters("users", username, "devices")).execute();
++		List<Entity> entityList = srq.getEntities();
++
++		for (Entity entity : entityList) {
++			UUID id = entity.getUuid();
++			try {
++				devices.add(em.get(id, Device.class));
++			} catch (Exception e) {
++				System.out.print(e.getMessage());
++			}
++		}
++		return devices;
++	}
++
++	/**
++	 * Get the username from the JSON input
++	 * 
++	 * @param jsonStrng
++	 *            JSON Input
++	 * @return username of the JSON input
++	 */
++	private String getUserName(String jsonStrng) {
++		String username = null;
++		try {
++			JSONObject inputObject = new JSONObject(jsonStrng);
++			username = inputObject.getString("recv");
++		} catch (JSONException ex) {
++			System.out.println(ex.getMessage());
++		}
++		return username;
++	}
++
++	/**
++	 * Get the message from the JSON input.
++	 * 
++	 * @param jsonString
++	 *            JSON input
++	 * @return message from the JSON input
++	 */
++	private String getMessage(String jsonString) {
++		String message = null;
++		try {
++			JSONObject raveObject = new JSONObject(jsonString);
++			message = raveObject.getString("msg");
++		} catch (JSONException ex) {
++			System.out.println("Exception: " + ex);
++		}
++		return message;
++	}
++
++	/**
++	 * Get the body from the JSON input.
++	 * 
++	 * @param jsonString
++	 *            JSON input
++	 * @return message from the JSON input
++	 */
++	private String getBody(String jsonString) {
++		String body = null;
++		try {
++			JSONObject raveObject = new JSONObject(jsonString);
++			body = raveObject.getJSONObject("data").toString();
++		} catch (JSONException ex) {
++			System.out.println("Exception: " + ex);
++		}
++		return body;
++	}
++
++	@Override
++	public void sendNotificationByGroups(String jsonInput,UUID appliUuid)throws Exception {
++		List<String> groupsNames = getGroupsListFromJSONPayload(jsonInput);
++		List<User> users = null;
++		List<Device> devices = null;
++		if(groupsNames!=null){
++			for (String groupName : groupsNames) {
++				users = getUsersFromGroup(groupName,appliUuid);
++				if(users!=null){
++					for (User user : users) {
++						devices = getUserDevices(appliUuid, user.getUsername());
++						if(devices!=null){
++							sendPush(jsonInput, devices, appliUuid);
++						}
++					}					
++				}
++			}}
++	}
++
++	@Override
++	public void sendNotificationByDevices(String jsonInput,UUID appliUuid)throws Exception {
++        List<Device> deviceList = new ArrayList<Device>();
++        Device device = null;
++		EntityManager em = null;
++		List<UUID> devicesUUID = getDevicesListFromJSONPayload(jsonInput);
++		for (UUID uuid : devicesUUID) {
++			em = emf.getEntityManager(appliUuid);
++			device = em.get(uuid,Device.class);
++			if(device!=null){				
++				deviceList.add(device);
++			}
++		}
++        sendPush(jsonInput, deviceList, appliUuid);
++	}
++
++	@Override
++	public void sendNotificationByUsers(String jsonInput,UUID appliUuid,List<String> usersnamesList)throws Exception {
++		List<String> usersnames = null;
++		if(usersnamesList==null){
++			usersnames = getUsersListFromJSONPayload(jsonInput);
++		}
++		else{
++			usersnames = usersnamesList;
++		}
++		List<Device> devicesOfUser = null;
++		if(usersnames!=null){
++			for (String username : usersnames) {
++				devicesOfUser = getUserDevices(appliUuid, username);
++				sendPush(jsonInput, devicesOfUser, appliUuid);
++			}			
++		}		
++	}
++	
++	private List<UUID> getDevicesListFromJSONPayload(String jsonInput){
++		List<UUID> devicesUUIDs = null;
++		JSONArray jsonArray = null;		
++		try {
++			JSONObject jsonObject = new JSONObject(jsonInput);			
++			if(jsonObject!=null){
++				jsonArray = jsonObject.getJSONArray("recv");
++				if(jsonArray!=null){					
++					devicesUUIDs = new ArrayList<UUID>();
++					for(int index=0;index<jsonArray.length();++index){
++						devicesUUIDs.add(UUID.fromString(jsonArray.getString(index)));			
++					}
++				}
++			}
++		} catch (JSONException ex) {
++			System.out.println("Exception: " + ex);
++		}		
++		return devicesUUIDs;		
++	}
++	
++	private List<String> getUsersListFromJSONPayload(String jsonInput){
++		List<String> usersnames = null;
++		JSONArray jsonArray = null;		
++		try {
++			JSONObject jsonObject = new JSONObject(jsonInput);			
++			if(jsonObject!=null){
++				jsonArray = jsonObject.getJSONArray("recv");
++				if(jsonArray!=null){					
++					usersnames = new ArrayList<String>();
++					for(int index=0;index<jsonArray.length();++index){
++						usersnames.add(jsonArray.getString(index));			
++					}
++				}
++			}
++		} catch (JSONException ex) {
++			System.out.println("Exception: " + ex);
++		}		
++		return usersnames;		
++	}
++	
++	private List<String> getGroupsListFromJSONPayload(String jsonInput){
++		List<String> groupsNames = null;
++		JSONArray jsonArray = null;		
++		try {
++			JSONObject jsonObject = new JSONObject(jsonInput);			
++			if(jsonObject!=null){
++				jsonArray = jsonObject.getJSONArray("recv");
++				if(jsonArray!=null){					
++					groupsNames = new ArrayList<String>();
++					for(int index=0;index<jsonArray.length();++index){
++						groupsNames.add(jsonArray.getString(index));			
++					}
++				}
++			}
++		} catch (JSONException ex) {
++			System.out.println("Exception: " + ex);
++		}		
++		return groupsNames;	
++	}
++	
++	private List<User> getUsersFromGroup(String groupName,UUID appUuid)throws Exception{
++		EntityManager em = emf.getEntityManager(appUuid);
++		List<User> users = null;
++		ServiceManager sm = smf.getServiceManager(appUuid);
++		ServiceResults srq = null;
++		srq = sm.newRequest(ServiceAction.GET,
++				parameters("groups", groupName, "users")).execute();
++		List<Entity> entityList = srq.getEntities();
++		if(entityList!=null){
++			users = new ArrayList<User>();
++			for (Entity entity : entityList) {
++				UUID id = entity.getUuid();
++				try {
++					users.add(em.get(id, User.class));
++				} catch (Exception e) {
++					System.out.print(e.getMessage());
++				}
++			}			
++		}
++		return users;		
++	}
++
++	@Override
++	public void sendNotificationByApp(String jsonInput, UUID appliUuid)
++			throws Exception {
++		List<Device> deviceList = getAllDevicesFromApp(appliUuid);
++        sendPush(jsonInput, deviceList, appliUuid);
++	}
++	
++	private List<Device> getAllDevicesFromApp(UUID appUuid)throws Exception{		
++		ServiceManager serviceManager = smf.getServiceManager(appUuid);
++		ServiceResults serviceResults = serviceManager.newRequest(ServiceAction.GET, parameters("devices")).execute();
++		List<Device> devices = null;
++		List<Entity> resultEntities = serviceResults.getEntities();
++		if(resultEntities!=null){
++			devices = new ArrayList<Device>();
++			for (Entity entity : resultEntities) {
++				devices.add((Device)entity);
++			}			
++		}
++		return devices;		
++	}
++
++	@Override
++	public void sendNotificationByDeviceId(String jsonInput, UUID appliUuid,
++			UUID devicesUUID) throws Exception {
++		List<Device> deviceList = new ArrayList<Device>();
++        Device device = null;
++		EntityManager em = emf.getEntityManager(appliUuid);
++		if(em != null){
++			device = em.get(devicesUUID,Device.class);
++			if(device!=null){
++				deviceList.add(device);
++			}
++            sendPush(jsonInput, deviceList, appliUuid);
++		}
++	}
++
++	@Override
++	public void sendNotificationByGroupName(String jsonInput, UUID appliUuid,
++			String groupName) throws Exception {
++		List<User> users = getUsersFromGroup(groupName,appliUuid);
++		List<String> usersNames = null;
++		if(users!=null){
++			usersNames = new ArrayList<String>();
++			for (User user : users) {
++				usersNames.add(user.getUsername());
++			}
++			sendNotificationByUsers(jsonInput, appliUuid, usersNames);
++		}		
++	}
++
++	@Override
++	public void sendNotificationByUsername(String jsonInput, UUID appliUuid,
++			String username) throws Exception {
++		List<Device> devices = getUserDevices(appliUuid, username);
++		sendPush(jsonInput, devices, appliUuid);
++	}
++}
+\ No newline at end of file
+-- 
+1.9.3 (Apple Git-50)
+
+
+From da3ea75541397590052ec1cd5f10b139b3e8a7e1 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Thu, 11 Dec 2014 12:12:45 +0530
+Subject: [PATCH 2/4] modification to push notification and enterpriseID
+
+modification(code addition) of usergrid to integrate push notification
+and enterpriseID of virtusa
+---
+ .../src/main/resources/usergrid-default.properties |  10 +-
+ .../usergrid/persistence/entities/Application.java |  10 ++
+ .../usergrid/persistence/entities/Device.java      |  28 ++++
+ .../usergrid/persistence/entities/Group.java       |  11 ++
+ stack/rest/pom.xml                                 |  18 +++
+ .../usergrid/rest/AbstractContextResource.java     |   3 +
+ .../rest/applications/ApplicationResource.java     |  71 +++++++++
+ .../rest/applications/users/UserResource.java      |  16 ++
+ .../rest/applications/users/UsersResource.java     |  14 ++
+ .../organizations/OrganizationResource.java        |   4 +
+ .../users/organizations/OrganizationsResource.java |  31 ++++
+ .../usergrid/management/ManagementService.java     |  26 ++++
+ .../cassandra/ManagementServiceImpl.java           | 171 +++++++++++++++++++--
+ .../apache/usergrid/services/ServiceRequest.java   |  11 +-
+ .../main/resources/usergrid-services-context.xml   |  12 ++
+ 15 files changed, 417 insertions(+), 19 deletions(-)
+
+diff --git a/stack/config/src/main/resources/usergrid-default.properties b/stack/config/src/main/resources/usergrid-default.properties
+index cc4dda6..1531d5f 100644
+--- a/stack/config/src/main/resources/usergrid-default.properties
++++ b/stack/config/src/main/resources/usergrid-default.properties
+@@ -103,10 +103,10 @@ usergrid.counter.batch.interval=30
+ #usergrid.auth.token.email.expires=0
+ 
+ # SysAdmin login
+-usergrid.sysadmin.login.name=
+-usergrid.sysadmin.login.email=
+-usergrid.sysadmin.login.password=
+-usergrid.sysadmin.login.allowed=false
++usergrid.sysadmin.login.name=admin
++usergrid.sysadmin.login.email=admin@admin.com
++usergrid.sysadmin.login.password=admin
++usergrid.sysadmin.login.allowed=true
+ 
+ usergrid.sysadmin.approve.users=false
+ usergrid.sysadmin.approve.organizations=false
+@@ -116,7 +116,7 @@ usergrid.temp.files=/tmp/usergrid
+ 
+ 
+ #The timeout in locks from reading messages transitionally from a queue.  Number of seconds to wait
+-usergrid.queue.lock.timeout=5
++usergrid.queue.lock.timeout=30
+ 
+ ######
+ #Scheduler setup
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
+index 6dbbdd2..e8f0f26 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Application.java
+@@ -120,6 +120,8 @@ public class Application extends TypedEntity {
+     @EntityCollection(type = "notification")
+     protected List<UUID> notifications;
+ 
++    @EntityCollection(type = "EntityNotifier")
++	protected List<UUID> notifiers;
+ 
+     public Application() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -130,6 +132,14 @@ public class Application extends TypedEntity {
+         uuid = id;
+     }
+ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++	public List<UUID> getNotifiers() {
++		return notifiers;
++	}
++
++	public void setNotifiers(List<UUID> notifiers) {
++		this.notifiers = notifiers;
++	}
+ 
+     @Override
+     @JsonSerialize(include = Inclusion.NON_NULL)
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
+index d781bbf..36e26b5 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Device.java
+@@ -20,6 +20,7 @@ package org.apache.usergrid.persistence.entities;
+ import java.util.List;
+ import java.util.UUID;
+ 
++import javax.xml.bind.annotation.XmlElement;
+ import javax.xml.bind.annotation.XmlRootElement;
+ 
+ import org.codehaus.jackson.map.annotate.JsonSerialize;
+@@ -35,6 +36,7 @@ public class Device extends TypedEntity {
+ 
+     public static final String ENTITY_TYPE = "device";
+     public static final String RECEIPTS_COLLECTION = "receipts";
++    public static final String PROPERTY_UUID = "uuid";
+ 
+     @EntityProperty(indexed = true, fulltextIndexed = false, required = false, aliasProperty = true, unique = true,
+             basic = true)
+@@ -49,6 +51,11 @@ public class Device extends TypedEntity {
+     @EntityProperty
+     protected Integer badge;
+ 
++    @EntityProperty
++	protected String platform;
++	
++	@EntityProperty
++    protected String token;
+ 
+     public Device() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -62,6 +69,7 @@ public class Device extends TypedEntity {
+ 
+     @Override
+     @JsonSerialize(include = Inclusion.NON_NULL)
++    @XmlElement(name="name")
+     public String getName() {
+         return name;
+     }
+@@ -103,4 +111,24 @@ public class Device extends TypedEntity {
+     public void setBadge( Integer badge ) {
+         this.badge = badge;
+     }
++    
++    @JsonSerialize(include = Inclusion.NON_NULL)
++	@XmlElement(name="platform")
++	public String getPlatform() {
++		return platform;
++	}
++
++	public void setPlatform(String platform) {
++		this.platform = platform;
++	}   
++ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++    @XmlElement(name="token")
++    public String getToken() {
++        return token;
++    }
++ 
++    public void setToken( String token ) {
++        this.token = token;
++    }
+ }
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
+index 5fd1fba..b73bbfd 100644
+--- a/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/entities/Group.java
+@@ -69,6 +69,8 @@ public class Group extends TypedEntity {
+     @EntityCollection(type = "role", linkedCollection = "groups", indexingDynamicDictionaries = true)
+     protected List<UUID> roles;
+ 
++    @EntityCollection(type = "idm", linkedCollection = "groups")
++    protected List<UUID> idms;
+ 
+     public Group() {
+         // id = UUIDUtils.newTimeUUID();
+@@ -79,6 +81,15 @@ public class Group extends TypedEntity {
+         uuid = id;
+     }
+ 
++    @JsonSerialize(include = Inclusion.NON_NULL)
++    public List<UUID> getIdms() {
++		return idms;
++	}
++
++
++	public void setIdms(List<UUID> idms) {
++		this.idms = idms;
++	}
+ 
+     @JsonSerialize(include = Inclusion.NON_NULL)
+     public String getPath() {
+diff --git a/stack/rest/pom.xml b/stack/rest/pom.xml
+index 998572e..6357dc1 100644
+--- a/stack/rest/pom.xml
++++ b/stack/rest/pom.xml
+@@ -354,6 +354,24 @@
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-install-plugin</artifactId>
+         <version>2.5.1</version>
++          <executions>
++          <execution>
++            <id>install jar</id>
++            <phase>install</phase>
++            <goals>
++              <goal>install-file</goal>
++            </goals>
++            <configuration>
++              <packaging>jar</packaging>
++              <artifactId>${project.artifactId}</artifactId>
++              <groupId>${project.groupId}</groupId>
++              <version>${project.version}</version>
++              <file>
++                ${project.build.directory}/${project.artifactId}-${project.version}.jar
++              </file>
++            </configuration>
++          </execution>
++        </executions>
+       </plugin>
+     </plugins>
+   </build>
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
+index c415a2c..e289b89 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/AbstractContextResource.java
+@@ -33,6 +33,7 @@ import org.apache.usergrid.persistence.EntityManagerFactory;
+ import org.apache.usergrid.rest.exceptions.RedirectionException;
+ import org.apache.usergrid.security.tokens.TokenService;
+ import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.push.PushService;
+ 
+ import com.sun.jersey.api.core.HttpContext;
+ import com.sun.jersey.api.core.ResourceContext;
+@@ -89,6 +90,8 @@ public abstract class AbstractContextResource {
+     @Autowired
+     protected TokenService tokens;
+ 
++    @Autowired
++    protected PushService pushService;
+ 
+     public AbstractContextResource() {
+     }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
+index a1c8d11..346de68 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/ApplicationResource.java
+@@ -30,6 +30,7 @@ import javax.ws.rs.GET;
+ import javax.ws.rs.HeaderParam;
+ import javax.ws.rs.POST;
+ import javax.ws.rs.Path;
++import javax.ws.rs.PathParam;
+ import javax.ws.rs.Produces;
+ import javax.ws.rs.QueryParam;
+ import javax.ws.rs.core.Context;
+@@ -55,6 +56,7 @@ import org.apache.usergrid.persistence.SimpleEntityRef;
+ import org.apache.usergrid.persistence.entities.Application;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.rest.AbstractContextResource;
++import org.apache.usergrid.rest.ApiResponse;
+ import org.apache.usergrid.rest.applications.assets.AssetsResource;
+ import org.apache.usergrid.rest.applications.events.EventsResource;
+ import org.apache.usergrid.rest.applications.queues.QueueResource;
+@@ -608,4 +610,73 @@ public class ApplicationResource extends ServiceResource {
+         }
+         return new JSONWithPadding( value, callback );
+     }
++    
++    /******************************************************
++	 * 
++	 * Implementation of post method Rest service for push notification.
++	 *****************************************************/
++
++	@POST
++	@Path("push")
++	public JSONWithPadding sendApnsPush(@FormParam("message") String message)
++			throws Exception {
++
++		ApiResponse response = createApiResponse();
++		response.setAction("Sending push");
++
++		pushService.sendNotification(message, applicationId);
++
++		response.setSuccess();
++		return new JSONWithPadding(response);
++	}
++	
++	/*
++	 * Send Notification for all devices in active application which has already registered.
++	 */
++	@POST
++	@Path("*/push")
++	public JSONWithPadding sendNotificationByApp(@FormParam("message") String message)
++			throws Exception {
++
++		ApiResponse response = createApiResponse();
++		response.setAction("Sending push for All");
++
++		pushService.sendNotificationByApp(message, applicationId);
++
++		response.setSuccess();
++		return new JSONWithPadding(response);
++	}
++	
++	/*
++	 * Send Notification for groups which user has initialized.
++	 */
++	@RequireApplicationAccess
++	@Path("groups")
++	public AbstractContextResource getGroupsResource(@Context UriInfo ui)throws Exception{
++		Class cls = Class.forName("org.apache.usergrid.rest.applications.groups.GroupsResource");
++		logger.debug("ApplicationResource.getGroupsResource");
++		addParameter(getServiceParameters(),"groups");
++		PathSegment ps = getFirstPathSegment("groups");
++		if(ps != null){
++			addMatrixParams(getServiceParameters(), ui, ps);
++		}
++		
++		return getSubResource(cls);		
++	}
++	
++	/*
++	 * Send Notification for devices which user has initialized.
++	 */
++	@RequireApplicationAccess
++	@Path("devices")
++	public AbstractContextResource getDevicesResource(@Context UriInfo ui)throws Exception{
++		Class cls = Class.forName("org.apache.usergrid.rest.applications.devices.DevicesResource");
++		logger.debug("ApplicationResource.getDevicesResource");
++		addParameter(getServiceParameters(),"devices");
++		PathSegment ps = getFirstPathSegment("devices");
++		if(ps != null){
++			addMatrixParams(getServiceParameters(), ui, ps);
++		}		
++		return getSubResource(cls);		
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
+index ea17282..3e7bd6a 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UserResource.java
+@@ -295,6 +295,7 @@ public class UserResource extends ServiceResource {
+         logger.info( "UserResource.showPasswordResetForm" );
+ 
+         this.token = token;
++        System.out.println(token);
+         try {
+             if ( management.checkPasswordResetTokenForAppUser( getApplicationId(), getUserUuid(), token ) ) {
+                 return handleViewable( "resetpw_set_form", this );
+@@ -578,4 +579,19 @@ public class UserResource extends ServiceResource {
+ 
+         return super.addNameParameter( ui, itemName );
+     }
++    
++    @POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@PathParam("username") String username,@FormParam("message") String message)throws Exception{	
++		System.out.println("okkk");
++		ApiResponse response;
++		if(message!=null){
++            pushService.sendNotificationByUsername(message,getApplicationId(),user.getUsername());
++			response = createApiResponse();
++			response.setAction("Send Notifications To "+user.getUsername());			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}	
++		return null;
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
+index 1a1b576..996ed07 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/users/UsersResource.java
+@@ -263,4 +263,18 @@ public class UsersResource extends ServiceResource {
+         }
+         return new JSONWithPadding( response, callback );
+     }
++    
++    @POST
++	@Path("push")
++	public JSONWithPadding sendPushToDevices(@FormParam("message") String message)throws Exception{
++		ApiResponse response;
++		if(message!=null){
++			pushService.sendNotificationByUsers(message,getApplicationId(),null);
++			response = createApiResponse();
++			response.setAction("Send Notifications By UsersNames");			
++			response.setSuccess();
++			return new JSONWithPadding(response);
++		}		
++		return null;
++	}
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
+index 24a9f43..53137fa 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/OrganizationResource.java
+@@ -46,6 +46,7 @@ import org.apache.amber.oauth2.common.message.OAuthResponse;
+ 
+ import org.apache.usergrid.management.ActivationState;
+ import org.apache.usergrid.management.OrganizationInfo;
++import org.apache.usergrid.management.UserInfo;
+ import org.apache.usergrid.management.export.ExportService;
+ import org.apache.usergrid.persistence.cassandra.CassandraService;
+ import org.apache.usergrid.persistence.entities.Export;
+@@ -55,9 +56,11 @@ import org.apache.usergrid.rest.applications.ServiceResource;
+ import org.apache.usergrid.rest.exceptions.RedirectionException;
+ import org.apache.usergrid.rest.management.organizations.applications.ApplicationsResource;
+ import org.apache.usergrid.rest.management.organizations.users.UsersResource;
++import org.apache.usergrid.rest.security.annotations.RequireAdminUserAccess;
+ import org.apache.usergrid.rest.security.annotations.RequireOrganizationAccess;
+ import org.apache.usergrid.rest.utils.JSONPUtils;
+ import org.apache.usergrid.security.oauth.ClientCredentialsInfo;
++import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+ import org.apache.usergrid.security.tokens.exceptions.TokenException;
+ import org.apache.usergrid.services.ServiceResults;
+ 
+@@ -69,6 +72,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+ import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+ import static javax.servlet.http.HttpServletResponse.SC_OK;
+ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
++import static org.apache.usergrid.rest.exceptions.SecurityException.mappableSecurityException;
+ 
+ 
+ @Component("org.apache.usergrid.rest.management.organizations.OrganizationResource")
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
+index 71eccbf..16f58d6 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/users/organizations/OrganizationsResource.java
+@@ -35,6 +35,7 @@ import javax.ws.rs.core.Context;
+ import javax.ws.rs.core.MediaType;
+ import javax.ws.rs.core.UriInfo;
+ 
++import org.apache.usergrid.persistence.entities.EnterpriseID;
+ import org.apache.usergrid.rest.RootResource;
+ import org.springframework.context.annotation.Scope;
+ import org.springframework.stereotype.Component;
+@@ -43,6 +44,7 @@ import org.apache.usergrid.management.UserInfo;
+ import org.apache.usergrid.management.exceptions.ManagementException;
+ import org.apache.usergrid.rest.AbstractContextResource;
+ import org.apache.usergrid.rest.ApiResponse;
++import org.apache.usergrid.rest.management.users.organizations.config.EnterpriseIDConfiguration;
+ import org.apache.usergrid.rest.security.annotations.RequireAdminUserAccess;
+ import org.apache.usergrid.rest.security.annotations.RequireOrganizationAccess;
+ import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+@@ -50,6 +52,8 @@ import org.apache.usergrid.security.shiro.utils.SubjectUtils;
+ import com.google.common.collect.BiMap;
+ import com.sun.jersey.api.json.JSONWithPadding;
+ 
++import static org.apache.usergrid.rest.exceptions.SecurityException.mappableSecurityException;
++
+ 
+ @Component( "org.apache.usergrid.rest.management.users.organizations.OrganizationsResource" )
+ @Scope( "prototype" )
+@@ -205,4 +209,31 @@ public class OrganizationsResource extends AbstractContextResource {
+ 
+         return new JSONWithPadding( response, callback );
+     }
++    
++    @RequireAdminUserAccess
++    @Path("{organizationName}/config" )
++    public EnterpriseIDConfiguration getUserByUsername( @Context UriInfo ui,
++            @PathParam( "organizationName" )
++            String organizationName,
++            @QueryParam( "callback" )
++            @DefaultValue( "callback" ) String callback )
++            throws Exception { 
++    	
++    	OrganizationInfo organization = management.getOrganizationByName(organizationName);
++    	
++    	if(organization==null){
++    		throw new ManagementException( "Could not find organization for name: " + organizationName);    		
++    	}
++
++        if ( "me".equals(user.getUsername()) ) {
++            UserInfo user = SubjectUtils.getAdminUser();
++            System.out.println(user.getUsername());
++            if ( ( user != null ) && ( user.getUuid() != null ) ) {
++            	return getSubResource(EnterpriseIDConfiguration.class).init(organization);
++            }
++            throw mappableSecurityException( "unauthorized", "No admin identity for access credentials provided" );
++        }
++
++        return getSubResource(EnterpriseIDConfiguration.class).init(organization);
++    }
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java b/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
+index 865f296..dc5488e 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
++++ b/stack/services/src/main/java/org/apache/usergrid/management/ManagementService.java
+@@ -25,13 +25,16 @@ import java.util.UUID;
+ 
+ import org.apache.usergrid.persistence.CredentialsInfo;
+ import org.apache.usergrid.persistence.Entity;
++import org.apache.usergrid.persistence.EntityNotifier;
+ import org.apache.usergrid.persistence.EntityRef;
+ import org.apache.usergrid.persistence.Identifier;
+ import org.apache.usergrid.persistence.entities.Application;
++import org.apache.usergrid.persistence.entities.EnterpriseID;
+ import org.apache.usergrid.persistence.entities.Group;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.security.oauth.AccessInfo;
+ import org.apache.usergrid.security.shiro.PrincipalCredentialsToken;
++import org.apache.usergrid.services.ServicePayload;
+ import org.apache.usergrid.services.ServiceResults;
+ 
+ import com.google.common.collect.BiMap;
+@@ -319,4 +322,27 @@ public interface ManagementService {
+ 
+     /** For testing purposes only */
+     public Properties getProperties();
++    
++    /**Get all notifiers from the application */
++	public Map<String, EntityNotifier> getAllNotifiers(UUID appId)throws Exception;
++
++	/**Get specific notifier from the application */
++	public EntityNotifier getNotifier(UUID appId, String notifierName)
++			throws Exception;
++	
++	/**Update notifier details */
++	public EntityNotifier updateNotifier(UUID appId, String notifierName,ServicePayload servicePayload) throws Exception;
++
++    /** Save enterpriseId settings */
++	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
++			String endpointURL, String userSearchBase, String userName)
++			throws Exception;
++	
++	/** Retrieve enterpriseId settings regarding organization name */
++	public EnterpriseID getEnterpriseIDConfigurationByOrg(
++			OrganizationInfo orgInfo) throws Exception;
++	
++	/** Test LDAP settings. If false means testing fail otherwise its returns true */
++	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,String username,String password)throws Exception;
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java b/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
+index eb6c375..a05255f 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
++++ b/stack/services/src/main/java/org/apache/usergrid/management/cassandra/ManagementServiceImpl.java
+@@ -58,13 +58,17 @@ import org.apache.usergrid.persistence.CredentialsInfo;
+ import org.apache.usergrid.persistence.Entity;
+ import org.apache.usergrid.persistence.EntityManager;
+ import org.apache.usergrid.persistence.EntityManagerFactory;
++import org.apache.usergrid.persistence.EntityNotifier;
+ import org.apache.usergrid.persistence.EntityRef;
+ import org.apache.usergrid.persistence.Identifier;
+ import org.apache.usergrid.persistence.PagingResultsIterator;
+ import org.apache.usergrid.persistence.Results;
+ import org.apache.usergrid.persistence.Results.Level;
+ import org.apache.usergrid.persistence.SimpleEntityRef;
++import org.apache.usergrid.persistence.entities.AppleNotifier;
+ import org.apache.usergrid.persistence.entities.Application;
++import org.apache.usergrid.persistence.entities.EnterpriseID;
++import org.apache.usergrid.persistence.entities.GoogleNotifier;
+ import org.apache.usergrid.persistence.entities.Group;
+ import org.apache.usergrid.persistence.entities.User;
+ import org.apache.usergrid.persistence.exceptions.DuplicateUniquePropertyExistsException;
+@@ -72,6 +76,8 @@ import org.apache.usergrid.persistence.exceptions.EntityNotFoundException;
+ import org.apache.usergrid.security.AuthPrincipalInfo;
+ import org.apache.usergrid.security.AuthPrincipalType;
+ import org.apache.usergrid.security.crypto.EncryptionService;
++import org.apache.usergrid.security.enterprise.AuthAdapter;
++import org.apache.usergrid.security.enterprise.AuthProvider;
+ import org.apache.usergrid.security.oauth.AccessInfo;
+ import org.apache.usergrid.security.oauth.ClientCredentialsInfo;
+ import org.apache.usergrid.security.salt.SaltProvider;
+@@ -88,6 +94,7 @@ import org.apache.usergrid.security.tokens.exceptions.TokenException;
+ import org.apache.usergrid.services.ServiceAction;
+ import org.apache.usergrid.services.ServiceManager;
+ import org.apache.usergrid.services.ServiceManagerFactory;
++import org.apache.usergrid.services.ServicePayload;
+ import org.apache.usergrid.services.ServiceRequest;
+ import org.apache.usergrid.services.ServiceResults;
+ import org.apache.usergrid.utils.ConversionUtils;
+@@ -95,6 +102,9 @@ import org.apache.usergrid.utils.JsonUtils;
+ import org.apache.usergrid.utils.MailUtils;
+ import org.apache.usergrid.utils.StringUtils;
+ import org.apache.usergrid.utils.UUIDUtils;
++import org.apache.commons.codec.digest.DigestUtils;
++import org.apache.commons.lang.text.StrSubstitutor;
++import org.apache.shiro.UnavailableSecurityManagerException;
+ 
+ import com.google.common.collect.BiMap;
+ import com.google.common.collect.HashBiMap;
+@@ -342,6 +352,7 @@ public class ManagementServiceImpl implements ManagementService {
+         else {
+             System.out.println(
+                     "Missing values for superuser account, check properties.  Skipping superuser account setup..." );
++            logger.warn("Missing values for superuser account, check properties.  Skipping superuser account setup...");
+         }
+     }
+ 
+@@ -2648,24 +2659,48 @@ public class ManagementServiceImpl implements ManagementService {
+     @Override
+     public User verifyAppUserPasswordCredentials( UUID applicationId, String name, String password ) throws Exception {
+ 
+-        User user = findUserEntity( applicationId, name );
+-        if ( user == null ) {
+-            return null;
+-        }
+-
+-        if ( verify( applicationId, user.getUuid(), password ) ) {
+-            if ( !user.activated() ) {
+-                throw new UnactivatedAppUserException();
++        EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(getOrganizationForApplication(applicationId));
++		AuthAdapter adapter = AuthProvider
++				.getAuthAdapterForApplication(applicationId);
++		adapter.setEnterpriseID(enterpriseID);
++		Boolean isAuthenticate = adapter.authenticate(name, password);
++		Boolean iscreateUserNotExist = enterpriseID.getCreateUserNotExist();
++
++		if (enterpriseID.getEnableLDAP() && isAuthenticate) {
++            
++            User user = findUserEntity( applicationId, name );
++            if ( user == null && iscreateUserNotExist) {
++                user = createUserInstanceFromEnterpriseID(applicationId, name,
++						password);
+             }
+-            if ( user.disabled() ) {
+-                throw new DisabledAppUserException();
++
++            if ( verify( applicationId, user.getUuid(), password ) ) {
++                if ( !user.activated() ) {
++                    throw new UnactivatedAppUserException();
++                }
++                if ( user.disabled() ) {
++                    throw new DisabledAppUserException();
++                }
++                return user;
+             }
+-            return user;
+-        }
++        } else {
++			throw new Exception("LDAP is not enabled.");
++		}
+ 
+         return null;
+     }
+ 
++    private User createUserInstanceFromEnterpriseID(UUID appUuid,
++			String username, String password) throws Exception {
++		ServiceManager serviceManager = smf.getServiceManager(appUuid);
++		ServicePayload servicePayload = new ServicePayload();
++		servicePayload.setProperty("username", username);
++		servicePayload.setProperty("name", username);
++		servicePayload.setProperty("password", password);
++		serviceManager.newRequest(ServiceAction.POST, parameters("users"),
++				servicePayload).execute();
++		return findUserEntity(appUuid, username);
++	}
+ 
+     public String getPasswordResetTokenForAppUser( UUID applicationId, UUID userId ) throws Exception {
+         return getTokenForPrincipal( EMAIL, TOKEN_TYPE_PASSWORD_RESET, applicationId, APPLICATION_USER, userId, 0 );
+@@ -2907,4 +2942,116 @@ public class ManagementServiceImpl implements ManagementService {
+         // TODO Auto-generated method stub
+         return null;
+     }
++    
++    @Override
++	public Map<String, EntityNotifier> getAllNotifiers(UUID appId) {
++		Map<String, EntityNotifier> notifiers = new HashMap<String, EntityNotifier>();
++		try {
++			EntityManager entityManager = emf.getEntityManager(appId);
++			ServiceManager serviceManager = smf.getServiceManager(appId);
++			ServiceResults serviceResults = serviceManager.newRequest(
++					ServiceAction.GET, parameters("notifiers")).execute();
++			List<Entity> resultEntities = serviceResults.getEntities();
++
++			for (Entity entity : resultEntities) {
++				if (entity.getName().equals("apple")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), AppleNotifier.class));
++				} else if (entity.getName().equals("google")) {
++					notifiers.put(entity.getName(), entityManager.get(
++							entity.getUuid(), GoogleNotifier.class));
++				}
++			}
++
++		} catch (Exception e) {
++			e.printStackTrace();
++		}
++
++		return notifiers;
++	}
++
++	@Override
++	public EntityNotifier getNotifier(UUID appId, String notifierName)
++			throws Exception {
++		Map<String, EntityNotifier> notifiers = getAllNotifiers(appId);
++		if (notifiers.containsKey(notifierName)) {
++			return notifiers.get(notifierName);
++		} else {
++			return null;
++		}
++	}
++
++	@Override
++	public EntityNotifier updateNotifier(UUID appId, String notifierName,
++			ServicePayload servicePayload) throws Exception {
++		ServiceManager serviceManager = smf.getServiceManager(appId);
++
++		serviceManager.newRequest(ServiceAction.PUT,
++				parameters("notifiers", notifierName), servicePayload)
++				.execute();
++
++		return getNotifier(appId, notifierName);
++	}
++
++	@Override
++	public EnterpriseID getEnterpriseIDConfigurationByOrg(
++			OrganizationInfo orgInfo) throws Exception {
++		return getEnterpriseIDConfigurationFromOrg(orgInfo);
++	}
++
++	@Override
++	public EnterpriseID saveEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String orgName, Boolean enableLDAP, Boolean createUserNotExist,
++			String endpointURL, String userSearchBase, String userIdAttribute)
++			throws Exception {
++
++		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
++
++		EnterpriseID enterpriseID = new EnterpriseID();
++		enterpriseID.setName(orgName);
++		enterpriseID.setType(orgName);
++		enterpriseID.setEnableLDAP(enableLDAP);
++		enterpriseID.setCreateUserNotExist(createUserNotExist);
++		enterpriseID.setEndpointURL(endpointURL);
++		enterpriseID.setUserSearchBase(userSearchBase);
++		enterpriseID.setUserIdAttribute(userIdAttribute);
++
++		EnterpriseID erpPD = em.create(enterpriseID);
++
++		em.addToCollection(
++				new SimpleEntityRef(Group.ENTITY_TYPE, orgInfo.getUuid()),
++				"idms",
++				new SimpleEntityRef(EnterpriseID.ENTITY_TYPE, erpPD.getUuid()));
++
++		return erpPD;
++	}
++
++	public EnterpriseID getEnterpriseIDConfigurationFromOrg(
++			OrganizationInfo organization) throws Exception {
++		EntityManager em = emf.getEntityManager(MANAGEMENT_APPLICATION_ID);
++		ServiceManager sm = smf.getServiceManager(MANAGEMENT_APPLICATION_ID);
++		ServiceResults serviceResults = sm.newRequest(ServiceAction.GET,
++				parameters("groups", organization.getUuid(), "idms")).execute();
++
++		List<Entity> entities = serviceResults.getEntities();
++		EnterpriseID enterpriseID = null;
++		for (Entity entity : entities) {
++			if (entity.getName().equals(organization.getName())) {
++				enterpriseID = em.get(entity.getUuid(), EnterpriseID.class);
++			}
++		}
++
++		return enterpriseID;
++	}
++
++	@Override
++	public Boolean testEnterpriseIDConfiguration(OrganizationInfo orgInfo,
++			String username, String password) throws Exception {
++		EnterpriseID enterpriseID = getEnterpriseIDConfigurationByOrg(orgInfo);
++		AuthAdapter authAdapter = AuthProvider
++				.getAuthAdapterForApplication(MANAGEMENT_APPLICATION_ID);
++		authAdapter.setEnterpriseID(enterpriseID);
++
++		return authAdapter.authenticate(username, password);
++	}
+ }
+diff --git a/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java b/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
+index 90c3b7e..2ebddec 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
++++ b/stack/services/src/main/java/org/apache/usergrid/services/ServiceRequest.java
+@@ -41,6 +41,8 @@ public class ServiceRequest {
+ 
+     private static final Logger logger = LoggerFactory.getLogger( ServiceRequest.class );
+ 
++    public static final int MAX_INVOCATIONS = 10;
++    
+     public static long count = 0;
+ 
+     private final long id = count++;
+@@ -226,7 +228,7 @@ public class ServiceRequest {
+             results = s.invoke( action, this, previousResults, payload );
+             if ( ( results != null ) && results.hasMoreRequests() ) {
+ 
+-                results = invokeMultiple( results );
++                results = invokeMultiple( results, payload );
+             }
+         }
+ 
+@@ -238,9 +240,14 @@ public class ServiceRequest {
+     }
+ 
+ 
+-    private ServiceResults invokeMultiple( ServiceResults previousResults ) throws Exception {
++    private ServiceResults invokeMultiple( ServiceResults previousResults, ServicePayload payload ) throws Exception {
+ 
+         List<ServiceRequest> requests = previousResults.getNextRequests();
++        if ( requests.size() > MAX_INVOCATIONS ) {
++            throw new IllegalArgumentException(
++                    "Maximum sub-collection requests exceeded, limit is " + MAX_INVOCATIONS + ", " + requests.size()
++                            + " attempted" );
++        }
+ 
+         if ( returnsTree ) {
+ 
+diff --git a/stack/services/src/main/resources/usergrid-services-context.xml b/stack/services/src/main/resources/usergrid-services-context.xml
+index 39748e1..6900e69 100644
+--- a/stack/services/src/main/resources/usergrid-services-context.xml
++++ b/stack/services/src/main/resources/usergrid-services-context.xml
+@@ -89,4 +89,16 @@
+ 
+   <bean id="exportJob" class="org.apache.usergrid.management.export.ExportJob" />
+ 
++    <bean id="notifierService"
++		class="org.apache.usergrid.services.notifiers.NotifiersServiceProvider">
++		<property name="serviceManagerFactory" ref="serviceManagerFactory" />
++		<property name="entityManagerFactory" ref="entityManagerFactory" />
++	</bean>
++
++	<bean id="pushService" class="org.apache.usergrid.services.push.PushServiceImpl">
++		<property name="serviceManagerFactory" ref="serviceManagerFactory" />
++		<property name="entityManagerFactory" ref="entityManagerFactory" />
++		<property name="notifierService" ref="notifierService" />
++	</bean>
++    
+ </beans>
+-- 
+1.9.3 (Apple Git-50)
+
+
+From 90acffd12b86c311f3070f05440a048e758476c7 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Thu, 11 Dec 2014 14:42:07 +0530
+Subject: [PATCH 3/4] added entity notifier interface
+
+---
+ .../usergrid/persistence/EntityNotifier.java       | 25 ++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+ create mode 100644 stack/core/src/main/java/org/apache/usergrid/persistence/EntityNotifier.java
+
+diff --git a/stack/core/src/main/java/org/apache/usergrid/persistence/EntityNotifier.java b/stack/core/src/main/java/org/apache/usergrid/persistence/EntityNotifier.java
+new file mode 100644
+index 0000000..4b47dbb
+--- /dev/null
++++ b/stack/core/src/main/java/org/apache/usergrid/persistence/EntityNotifier.java
+@@ -0,0 +1,25 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.persistence;
++
++public interface EntityNotifier {
++
++	public Boolean getEnablePush();
++
++	public void setEnablePush(Boolean enablePush);		
++
++}
+\ No newline at end of file
+-- 
+1.9.3 (Apple Git-50)
+
+
+From 5d33a773157713293f3057e5ccd947c3615b6d42 Mon Sep 17 00:00:00 2001
+From: vishnuvathsan <vishnuvathsan@gmail.com>
+Date: Thu, 11 Dec 2014 15:42:10 +0530
+Subject: [PATCH 4/4] added json dependency
+
+---
+ stack/services/pom.xml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/stack/services/pom.xml b/stack/services/pom.xml
+index 6c9c868..5e7b382 100644
+--- a/stack/services/pom.xml
++++ b/stack/services/pom.xml
+@@ -549,6 +549,11 @@
+       <scope>test</scope>
+     </dependency>
+ 
++    <dependency>
++		<groupId>org.json</groupId>
++		<artifactId>json</artifactId>
++        <version>20140107</version>
++    </dependency>
+ 
+   </dependencies>
+ </project>
+-- 
+1.9.3 (Apple Git-50)
+
